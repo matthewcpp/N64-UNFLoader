@@ -44,10 +44,12 @@
     void  device_set_everdrive(ftdi_context_t* cart, int index);
     void  device_set_sc64(ftdi_context_t* cart, int index);
     void  device_open();
-    void  device_sendrom(char* rompath);
+    void  device_sendrom(FILE* f, int filesize);
     void  device_senddata(int datatype, char* data, u32 size);
     bool  device_isopen();
     DWORD device_getcarttype();
     void  device_close();
+
+    ftdi_context_t* device_get_cart();
 
 #endif

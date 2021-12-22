@@ -1,13 +1,19 @@
 /***************************************************************
                             main.cpp
-                               
+
 UNFLoader Entrypoint
 ***************************************************************/
 
 #include "main.h"
 #include "helper.h"
 #include "device.h"
+#include "debug.h"
+
+#ifndef UNFLOADER_CMAKE
 #pragma comment(lib, "Include/FTD2XX.lib")
+#endif
+
+#include <sys/stat.h>
 
 
 /*********************************
@@ -27,6 +33,7 @@ void parse_args(int argc, char* argv[]);
 void show_title();
 void list_args();
 void show_help();
+void sendrom(char* rompath);
 
 
 /*********************************
@@ -34,20 +41,20 @@ void show_help();
 *********************************/
 
 // Program globals
-bool    global_usecolors   = true;
-int     global_cictype     = -1;
-u32     global_savetype    = 0;
-bool    global_listenmode  = false;
-bool    global_debugmode   = false;
-bool    global_z64         = false;
-char*   global_debugout    = NULL;
-FILE*   global_debugoutptr = NULL;
-char*   global_exportpath  = NULL;
-time_t  global_timeout     = 0;
+bool    global_usecolors = true;
+int     global_cictype = -1;
+u32     global_savetype = 0;
+bool    global_listenmode = false;
+bool    global_debugmode = false;
+bool    global_z64 = false;
+char* global_debugout = NULL;
+FILE* global_debugoutptr = NULL;
+char* global_exportpath = NULL;
+time_t  global_timeout = 0;
 time_t  global_timeouttime = 0;
-bool    global_closefail   = false;
-char*   global_filename    = NULL;
-WINDOW* global_window      = NULL;
+bool    global_closefail = false;
+char* global_filename = NULL;
+WINDOW* global_window = NULL;
 
 // Local globals
 static int   local_flashcart = CART_NONE;
@@ -67,9 +74,9 @@ int main(int argc, char* argv[])
     int i;
 
     // Initialize PDCurses
-    #ifdef LINUX
-        setlocale(LC_ALL, "");
-    #endif
+#ifdef LINUX
+    setlocale(LC_ALL, "");
+#endif
     initscr();
     start_color();
     use_default_colors();
@@ -97,7 +104,7 @@ int main(int argc, char* argv[])
     // Upload the ROM and start debug mode if necessary
     device_find(local_flashcart);
     device_open();
-    device_sendrom(local_rom);
+    sendrom(local_rom);
     device_close();
 
     // End the program
@@ -108,10 +115,131 @@ int main(int argc, char* argv[])
     }
     else
         handle_timeout();
-    for (i=0; i<TOTAL_COLORS; i++)
-        attroff(COLOR_PAIR(i+1));
+    for (i = 0; i < TOTAL_COLORS; i++)
+        attroff(COLOR_PAIR(i + 1));
     endwin();
     return 0;
+}
+
+/*==============================
+    device_sendrom
+    Opens the ROM and calls the function to send it to the flashcart
+    @param A string with the path to the ROM
+==============================*/
+
+void sendrom(char* rompath)
+{
+    bool escignore = false;
+    bool resend = false;
+    FILE* file;
+    int  filesize = 0; // I could use finfo, but it doesn't work in WinXP (more info below)
+    time_t lastmod = 0;
+    struct stat finfo;
+
+    for (; ; )
+    {
+        unsigned char rom_header[4];
+
+        // Open the ROM and get info about it 
+        file = fopen(rompath, "rb");
+        if (file == NULL)
+        {
+            device_close();
+            terminate("Unable to open file '%s'.\n", rompath);
+        }
+        stat(rompath, &finfo);
+        global_filename = rompath;
+
+        // Read the ROM header to check if its byteswapped
+        fread(rom_header, 4, 1, file);
+        if (!(rom_header[0] == 0x80 && rom_header[1] == 0x37 && rom_header[2] == 0x12 && rom_header[3] == 0x40))
+            global_z64 = true;
+
+        // Get the filesize and reset the position
+        // Workaround for https://stackoverflow.com/questions/32452777/visual-c-2015-express-stat-not-working-on-windows-xp
+        fseek(file, 0, SEEK_END);
+        filesize = ftell(file);
+        fseek(file, 0, SEEK_SET);
+
+        // If the file was not modified
+        if (!resend && lastmod != 0 && lastmod == finfo.st_mtime)
+        {
+            int count = 0;
+
+            // Close the file and wait for three seconds
+            fclose(file);
+            while (count < 30)
+            {
+                int ch;
+#ifndef LINUX
+                Sleep(100);
+#else
+                usleep(100);
+#endif
+                count++;
+                ch = getch();
+
+                // Disable ESC ignore if the key was released
+                if (ch == CH_ESCAPE && escignore)
+                    escignore = false;
+
+                // Check if ESC was pressed
+                if (ch == CH_ESCAPE && !escignore)
+                {
+                    pdprint("\nExiting listen mode.\n", CRDEF_PROGRAM);
+                    return;
+                }
+
+                // Check if R was pressed
+                if (ch == 'r')
+                {
+                    resend = true;
+                    pdprint("\nReuploading ROM by request.\n", CRDEF_PROGRAM);
+                    break;
+                }
+            }
+
+            // Restart the while loop
+            if (!resend)
+                clearerr(file);
+            continue;
+        }
+        else if (lastmod != 0)
+        {
+            pdprint("\nFile change detected. Reuploading ROM.\n", CRDEF_PROGRAM);
+            lastmod = finfo.st_mtime;
+        }
+
+        // Initialize lastmod
+        if (lastmod == 0)
+            lastmod = finfo.st_mtime;
+
+        // Complain if the ROM is too small
+        if (filesize < 1052672)
+            pdprint("ROM is smaller than 1MB, it might not boot properly.\n", CRDEF_PROGRAM);
+
+        // Send the ROM
+        device_sendrom(file, filesize);
+
+        // Close the file pipe and start the timeout
+        fclose(file);
+        global_timeouttime = global_timeout + time(NULL);
+
+        // Start Debug Mode
+        if (global_debugmode)
+        {
+            debug_main(device_get_cart());
+            escignore = true;
+        }
+
+        // Break out of the while loop if not in listen mode
+        if (!global_listenmode)
+            break;
+
+        // Print that we're waiting for changes
+        pdprint("Waiting for file changes. Press ESC to stop. Press R to resend.\n", CRDEF_INPUT);
+        resend = false;
+    }
 }
 
 
@@ -127,14 +255,14 @@ void parse_args(int argc, char* argv[])
     int i;
 
     // If no arguments were given, print the args
-    if (argc == 1) 
+    if (argc == 1)
     {
         list_args();
         terminate("");
     }
 
     // Check every argument
-    for (i=1; i<argc; i++) 
+    for (i = 1; i < argc; i++)
     {
         char* command = argv[i];
 
@@ -149,15 +277,15 @@ void parse_args(int argc, char* argv[])
             i++;
 
             // If we have an argument after this one, set it as our flashcart, otherwise terminate
-            if (i<argc && argv[i][0] != '-') 
+            if (i < argc && argv[i][0] != '-')
             {
                 char* value = argv[i];
-                local_flashcart = value[0]-'0';
+                local_flashcart = value[0] - '0';
 
                 // Validate that the cart number is between our range
-                if (local_flashcart < CART_64DRIVE1 || local_flashcart > CART_EVERDRIVE) 
+                if (local_flashcart < CART_64DRIVE1 || local_flashcart > CART_EVERDRIVE)
                     terminate("Invalid parameter '%s' for command '%s'.", value, command);
-            } 
+            }
             else
                 terminate("Missing parameter(s) for command '%s'.", command);
         }
@@ -168,9 +296,9 @@ void parse_args(int argc, char* argv[])
                 i++;
 
             // If we have an argument after this one, then set the ROM path, otherwise terminate
-            if ((i<argc && argv[i][0] != '-') || command[0] != '-') 
+            if ((i < argc && argv[i][0] != '-') || command[0] != '-')
                 local_rom = argv[i];
-            else 
+            else
                 terminate("Missing parameter(s) for command '%s'.", command);
         }
         else if (!strcmp(command, "-c")) // Set CIC command
@@ -178,14 +306,14 @@ void parse_args(int argc, char* argv[])
             i++;
 
             // If we have an argument after this one, then set the ROM path, otherwise terminate
-            if (i<argc && argv[i][0] != '-') 
+            if (i < argc && argv[i][0] != '-')
             {
                 if (isdigit(argv[i][0]))
                     global_cictype = strtol(argv[i], NULL, 0);
                 else
-                    global_cictype = strtol(argv[i]+1, NULL, 0);
+                    global_cictype = strtol(argv[i] + 1, NULL, 0);
             }
-            else 
+            else
                 terminate("Missing parameter(s) for command '%s'.", command);
         }
         else if (!strcmp(command, "-s")) // Set save type command
@@ -203,7 +331,7 @@ void parse_args(int argc, char* argv[])
             i++;
 
             // If we have an argument after this one, then set the terminal height, otherwise terminate
-            if (i<argc && argv[i][0] != '-')
+            if (i < argc && argv[i][0] != '-')
                 resize_term(strtol(argv[i], NULL, 0), 80);
             else
                 terminate("Missing parameter(s) for command '%s'.", command);
@@ -215,10 +343,10 @@ void parse_args(int argc, char* argv[])
             i++;
 
             // If we have an argument after this one, then set the export path
-            if (i<argc && argv[i][0] != '-')
+            if (i < argc && argv[i][0] != '-')
             {
                 u32 len = strlen(argv[i]);
-                if (argv[i][len-1] == '/')
+                if (argv[i][len - 1] == '/')
                     global_exportpath = argv[i];
                 else
                     terminate("Incorrect path '%s'.", argv[i]);
@@ -238,13 +366,13 @@ void parse_args(int argc, char* argv[])
             pdprint("Debug mode enabled.", CRDEF_PROGRAM);
 
             // If we have an argument after this one, then set the output directory
-            if (i+1<argc && argv[i+1][0] != '-')
+            if (i + 1 < argc && argv[i + 1][0] != '-')
             {
                 i++;
                 if (global_exportpath != NULL)
                 {
                     char* filepath = (char*)malloc(256);
-                    memset(filepath, 0 ,256);
+                    memset(filepath, 0, 256);
                     strcat(filepath, global_exportpath);
                     strcat(filepath, argv[i]);
                     global_debugout = filepath;
@@ -260,13 +388,13 @@ void parse_args(int argc, char* argv[])
             i++;
 
             // If we have an argument after this one, then set the timeout, otherwise terminate
-            if (i<argc && argv[i][0] != '-') 
+            if (i < argc && argv[i][0] != '-')
                 global_timeout = atoi(argv[i]);
-            else 
+            else
                 terminate("Missing parameter(s) for command '%s'.", command);
             pdprint("Set timeout to %d seconds.\n", CRDEF_PROGRAM, global_timeout);
         }
-        else 
+        else
             terminate("Unknown command '%s'.", command);
     }
 }
@@ -281,15 +409,15 @@ void show_title()
 {
     int i;
     char title[] = PROGRAM_NAME_SHORT;
-    int titlesize = sizeof(title)/sizeof(title[0]);
- 
+    int titlesize = sizeof(title) / sizeof(title[0]);
+
     // Print the title
-    for (i=0; i<titlesize-1; i++)
+    for (i = 0; i < titlesize - 1; i++)
     {
         char str[2];
         str[0] = title[i];
         str[1] = '\0';
-        pdprint(str, 1+(i)%TOTAL_COLORS);
+        pdprint(str, 1 + (i) % TOTAL_COLORS);
     }
 
     // Print other stuff
@@ -319,14 +447,14 @@ void list_args()
     pdprint("  \t 2 - %s\t 3 - %s\n", CRDEF_PROGRAM, "7101 (NTSC)", "7102 (PAL)");
     pdprint("  \t 4 - %s\t\t 5 - %s\n", CRDEF_PROGRAM, "x103 (All)", "x105 (All)");
     pdprint("  \t 6 - %s\t\t 7 - %s\n", CRDEF_PROGRAM, "x106 (All)", "5101 (NTSC)");
-    pdprint("  -s <int>\t\t   Set save emulation.\n", CRDEF_PROGRAM);    
+    pdprint("  -s <int>\t\t   Set save emulation.\n", CRDEF_PROGRAM);
     pdprint("  \t 1 - %s\t 2 - %s\n", CRDEF_PROGRAM, "EEPROM 4Kbit", "EEPROM 16Kbit");
     pdprint("  \t 3 - %s\t 4 - %s\n", CRDEF_PROGRAM, "SRAM 256Kbit", "FlashRAM 1Mbit");
     pdprint("  \t 5 - %s\t 6 - %s\n", CRDEF_PROGRAM, "SRAM 768Kbit", "FlashRAM 1Mbit (PokeStdm2)");
     pdprint("  -d [filename]\t\t   Debug mode. Optionally write output to a file.\n", CRDEF_PROGRAM);
     pdprint("  -l\t\t\t   Listen mode (reupload ROM when changed).\n", CRDEF_PROGRAM);
     pdprint("  -e <directory>\t   File export directory (Folder must exist!).\n", CRDEF_PROGRAM);
-    pdprint(            "\t\t\t   Example:  'folder/path/' or 'c:/folder/path'.\n", CRDEF_PROGRAM);
+    pdprint("\t\t\t   Example:  'folder/path/' or 'c:/folder/path'.\n", CRDEF_PROGRAM);
     pdprint("  -h <int>\t\t   Force terminal height (number of rows).\n", CRDEF_PROGRAM);
     pdprint("  -t <seconds>\t\t   Enable timeout (disables key press checks).\n", CRDEF_PROGRAM);
     pdprint("  -w\t\t\t   Disable terminal colors.\n", CRDEF_PROGRAM);
@@ -346,14 +474,14 @@ void show_help()
     // Print the introductory message
     pdprint("Welcome to the %s!\n", CRDEF_PROGRAM, PROGRAM_NAME_LONG);
     pdprint("This tool is designed to upload ROMs to your N64 Flashcart via USB, to allow\n"
-            "homebrew developers to debug their ROMs in realtime with the help of the\n"
-            "library provided with this tool.\n\n", CRDEF_PROGRAM);
+        "homebrew developers to debug their ROMs in realtime with the help of the\n"
+        "library provided with this tool.\n\n", CRDEF_PROGRAM);
     pdprint("Which category are you interested in?\n"
-            " 1 - Uploading ROMs on the 64Drive\n"
-            " 2 - Uploading ROMs on the EverDrive\n"
-            " 3 - Uploading ROMs on the SummerCart64\n"
-            " 4 - Using Listen mode\n"
-            " 5 - Using Debug mode\n", CRDEF_PROGRAM);
+        " 1 - Uploading ROMs on the 64Drive\n"
+        " 2 - Uploading ROMs on the EverDrive\n"
+        " 3 - Uploading ROMs on the SummerCart64\n"
+        " 4 - Using Listen mode\n"
+        " 5 - Using Debug mode\n", CRDEF_PROGRAM);
 
     // Get the category
     pdprint("\nCategory: ", CRDEF_INPUT);
@@ -363,61 +491,61 @@ void show_help()
     // Print the category contents
     switch (category)
     {
-        case '1':
-            pdprint(" 1) Ensure your device is on the latest firmware/version.\n"
-                    " 2) Plug your 64Drive USB into your PC, ensuring the console is turned OFF.\n"
-                    " 3) Run this program to upload a ROM. Example:\n" 
-                    " \t unfloader.exe -r myrom.n64\n", CRDEF_PROGRAM);
-            pdprint(" 4) If using 64Drive HW2, your game might not boot if you do not state the\n"
-                    "    correct CIC as an argument. Most likely, you are using CIC 6102, so simply\n"
-                    "    append that to the end of the arguments. Example:\n"
-                    " \t unfloader.exe -r myrom.n64 -c 6102\n"
-                    " 5) Once the upload process is finished, turn the console on. Your ROM should\n"
-                    "    execute.\n", CRDEF_PROGRAM);
-            break;
-        case '2':
-            pdprint(" 1) Ensure your device is on the latest firmware/version.\n"
-                    " 2) Plug your EverDrive USB into your PC, ensuring the console is turned ON and\n"
-                    "    in the main menu.\n"
-                    " 3) Run this program to upload a ROM. Example:\n" 
-                    " \t unfloader.exe -r myrom.n64\n"
-                    " 4) Once the upload process is finished, your ROM should execute.\n", CRDEF_PROGRAM);
-            break;
-        case '3':
-            pdprint(" 1) Plug the SummerCart64 USB into your PC, ensuring the console is turned OFF.\n"
-                    " 2) Run this program to upload a ROM. Example:\n" 
-                    " \t unfloader.exe -r myrom.n64\n"
-                    " 3) Once the upload process is finished, your ROM should execute.\n", CRDEF_PROGRAM);
-            break;
-        case '4':
-            pdprint("Listen mode automatically re-uploads the ROM via USB when it is modified. This\n"
-                    "saves you the trouble of having to restart this program every recompile of your\n"
-                    "homebrew. It is on YOU to ensure the cart is prepared to receive another ROM.\n"
-                    "That means that the console must be switched OFF if you're using the 64Drive or\n"
-                    "the SummerCart64, or be in the menu if you're using an EverDrive.\n", CRDEF_PROGRAM);
-            break;
-        case '5':
-            pdprint("In order to use the debug mode, the N64 ROM that you are executing must already\n"
-                    "have implented the USB or debug library that comes with this tool. Otherwise,\n"
-                    "debug mode will serve no purpose.\n\n", CRDEF_PROGRAM);
-            pdprint("During debug mode, you are able to type commands, which show up in ", CRDEF_PROGRAM);
-            pdprint(                                                                    "green", CRDEF_INPUT);
-            pdprint(                                                                          " on\n"
-                    "the bottom of the terminal. You can press ENTER to send this command to the N64\n"
-                    "as the ROM executes. The command you send must obviously be implemented by the\n"
-                    "debug library, and can do various things, such as upload binary files, take\n"
-                    "screenshots, or change things in the game. If you wrap a part of your command\n"
-                    "with the '@' symbol, the tool will treat that part as a file and will upload it\n"
-                    "along with the rest of the data.\n\n", CRDEF_PROGRAM);
-            pdprint("During execution, the ROM is free to print things to the console where this\n"
-                    "program is running. Messages from the console will appear in ", CRDEF_PROGRAM);
-            pdprint(                                                              "yellow", CRDEF_PRINT);
-            pdprint(                                                                     ".\n\n"
-                    "For more information on how to implement the debug library, check the GitHub\n"
-                    "page where this tool was uploaded to, there should be plenty of examples there.\n"
-                    PROGRAM_GITHUB"\n", CRDEF_PROGRAM);
-            break;
-        default:
-            terminate("Unknown category."); 
+    case '1':
+        pdprint(" 1) Ensure your device is on the latest firmware/version.\n"
+            " 2) Plug your 64Drive USB into your PC, ensuring the console is turned OFF.\n"
+            " 3) Run this program to upload a ROM. Example:\n"
+            " \t unfloader.exe -r myrom.n64\n", CRDEF_PROGRAM);
+        pdprint(" 4) If using 64Drive HW2, your game might not boot if you do not state the\n"
+            "    correct CIC as an argument. Most likely, you are using CIC 6102, so simply\n"
+            "    append that to the end of the arguments. Example:\n"
+            " \t unfloader.exe -r myrom.n64 -c 6102\n"
+            " 5) Once the upload process is finished, turn the console on. Your ROM should\n"
+            "    execute.\n", CRDEF_PROGRAM);
+        break;
+    case '2':
+        pdprint(" 1) Ensure your device is on the latest firmware/version.\n"
+            " 2) Plug your EverDrive USB into your PC, ensuring the console is turned ON and\n"
+            "    in the main menu.\n"
+            " 3) Run this program to upload a ROM. Example:\n"
+            " \t unfloader.exe -r myrom.n64\n"
+            " 4) Once the upload process is finished, your ROM should execute.\n", CRDEF_PROGRAM);
+        break;
+    case '3':
+        pdprint(" 1) Plug the SummerCart64 USB into your PC, ensuring the console is turned OFF.\n"
+            " 2) Run this program to upload a ROM. Example:\n"
+            " \t unfloader.exe -r myrom.n64\n"
+            " 3) Once the upload process is finished, your ROM should execute.\n", CRDEF_PROGRAM);
+        break;
+    case '4':
+        pdprint("Listen mode automatically re-uploads the ROM via USB when it is modified. This\n"
+            "saves you the trouble of having to restart this program every recompile of your\n"
+            "homebrew. It is on YOU to ensure the cart is prepared to receive another ROM.\n"
+            "That means that the console must be switched OFF if you're using the 64Drive or\n"
+            "the SummerCart64, or be in the menu if you're using an EverDrive.\n", CRDEF_PROGRAM);
+        break;
+    case '5':
+        pdprint("In order to use the debug mode, the N64 ROM that you are executing must already\n"
+            "have implented the USB or debug library that comes with this tool. Otherwise,\n"
+            "debug mode will serve no purpose.\n\n", CRDEF_PROGRAM);
+        pdprint("During debug mode, you are able to type commands, which show up in ", CRDEF_PROGRAM);
+        pdprint("green", CRDEF_INPUT);
+        pdprint(" on\n"
+            "the bottom of the terminal. You can press ENTER to send this command to the N64\n"
+            "as the ROM executes. The command you send must obviously be implemented by the\n"
+            "debug library, and can do various things, such as upload binary files, take\n"
+            "screenshots, or change things in the game. If you wrap a part of your command\n"
+            "with the '@' symbol, the tool will treat that part as a file and will upload it\n"
+            "along with the rest of the data.\n\n", CRDEF_PROGRAM);
+        pdprint("During execution, the ROM is free to print things to the console where this\n"
+            "program is running. Messages from the console will appear in ", CRDEF_PROGRAM);
+        pdprint("yellow", CRDEF_PRINT);
+        pdprint(".\n\n"
+            "For more information on how to implement the debug library, check the GitHub\n"
+            "page where this tool was uploaded to, there should be plenty of examples there.\n"
+            PROGRAM_GITHUB"\n", CRDEF_PROGRAM);
+        break;
+    default:
+        terminate("Unknown category.");
     }
 }

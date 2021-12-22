@@ -4,10 +4,9 @@
 Passes flashcart communication to more specific functions
 ***************************************************************/
 
-#include <sys/stat.h>
+
 #include "main.h"
 #include "helper.h"
-#include "debug.h"
 #include "device.h"
 #include "device_64drive.h"
 #include "device_everdrive.h"
@@ -29,6 +28,14 @@ void (*funcPointer_close)(ftdi_context_t*);
 *********************************/
 
 static ftdi_context_t local_usb = {0, };
+
+/*==============================
+    device_find
+    Returns the cart context
+==============================*/
+ftdi_context_t* device_get_cart() {
+    return &local_usb;
+}
 
 
 /*==============================
@@ -209,123 +216,12 @@ void device_open()
 
 /*==============================
     device_sendrom
-    Opens the ROM and calls the function to send it to the flashcart
-    @param A string with the path to the ROM
+    Transfers a rom to the flashcart
+    @param file handle to ROM
+    @param size of rom
 ==============================*/
-
-void device_sendrom(char* rompath)
-{
-    bool escignore = false;
-    bool resend = false;
-    FILE *file;
-    int  filesize = 0; // I could use finfo, but it doesn't work in WinXP (more info below)
-    time_t lastmod = 0;
-    struct stat finfo;
-
-    for ( ; ; )
-    {
-        unsigned char rom_header[4];
-
-        // Open the ROM and get info about it 
-        file = fopen(rompath, "rb");
-        if (file == NULL)
-        {
-            device_close();
-            terminate("Unable to open file '%s'.\n", rompath);
-        }
-	    stat(rompath, &finfo);
-        global_filename = rompath;
-
-        // Read the ROM header to check if its byteswapped
-        fread(rom_header, 4, 1, file);
-        if (!(rom_header[0] == 0x80 && rom_header[1] == 0x37 && rom_header[2] == 0x12 && rom_header[3] == 0x40))
-            global_z64 = true;
-
-        // Get the filesize and reset the position
-        // Workaround for https://stackoverflow.com/questions/32452777/visual-c-2015-express-stat-not-working-on-windows-xp
-        fseek(file, 0, SEEK_END);
-        filesize = ftell(file);
-        fseek(file, 0, SEEK_SET);
-
-        // If the file was not modified
-        if (!resend && lastmod != 0 && lastmod == finfo.st_mtime)
-        {
-            int count = 0;
-
-            // Close the file and wait for three seconds
-            fclose(file);
-            while (count < 30)
-            {
-                int ch;
-                #ifndef LINUX
-                    Sleep(100);
-                #else
-                    usleep(100);
-                #endif
-                count++;
-                ch = getch();
-
-                // Disable ESC ignore if the key was released
-                if (ch == CH_ESCAPE && escignore)
-                    escignore = false;
-
-                // Check if ESC was pressed
-                if (ch == CH_ESCAPE && !escignore)
-                {
-                    pdprint("\nExiting listen mode.\n", CRDEF_PROGRAM);
-                    return;
-                }
-
-                // Check if R was pressed
-                if (ch == 'r')
-                {
-                    resend = true;
-                    pdprint("\nReuploading ROM by request.\n", CRDEF_PROGRAM);
-                    break;
-                }
-            }
-
-            // Restart the while loop
-            if (!resend)
-                clearerr(file);
-            continue;
-        }
-        else if (lastmod != 0)
-        {
-            pdprint("\nFile change detected. Reuploading ROM.\n", CRDEF_PROGRAM);
-            lastmod = finfo.st_mtime;
-        }
-
-        // Initialize lastmod
-        if (lastmod == 0)
-            lastmod = finfo.st_mtime;
-
-        // Complain if the ROM is too small
-        if (filesize < 1052672)
-            pdprint("ROM is smaller than 1MB, it might not boot properly.\n", CRDEF_PROGRAM);
-
-        // Send the ROM
-        funcPointer_sendrom(&local_usb, file, filesize);
-
-        // Close the file pipe and start the timeout
-        fclose(file);
-        global_timeouttime = global_timeout + time(NULL);
-
-        // Start Debug Mode
-        if (global_debugmode) 
-        {
-            debug_main(&local_usb);
-            escignore = true;
-        }
-
-        // Break out of the while loop if not in listen mode
-        if (!global_listenmode)
-            break;
-
-        // Print that we're waiting for changes
-        pdprint("Waiting for file changes. Press ESC to stop. Press R to resend.\n", CRDEF_INPUT);
-        resend = false;
-    }
+void  device_sendrom(FILE* f, int filesize) {
+    funcPointer_sendrom(&local_usb, f, filesize);
 }
 
 
