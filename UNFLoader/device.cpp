@@ -40,6 +40,12 @@ static void  device_set_sc64(ftdi_context_t* cart, int index);
 *********************************/
 
 static ftdi_context_t local_usb = {0, };
+static device_fatal_error_callback_t fatal_error_callback = NULL;
+
+void  device_set_fatal_error_callback(device_fatal_error_callback_t callback)
+{
+    fatal_error_callback = callback;
+}
 
 /*==============================
     device_find
@@ -390,4 +396,29 @@ void device_sendrom_params_init(device_sendrom_params_t* params) {
     params->cictype = 1;
     params->savetype = 0;
     params->z64 = 0;
+}
+
+/*==============================
+    testcommand
+    Terminates the program if the command fails
+    @param The return value from an FTDI function
+    @param Text to print if the command failed
+    @param Variadic arguments to print as well
+==============================*/
+
+void testcommand(FT_STATUS status, const char* reason, ...)
+{
+    // Test the command
+    if (status == FT_OK || !fatal_error_callback)
+        return;
+
+    char buffer[512];
+
+    va_list args;
+    va_start(args, reason);
+
+    vsprintf_s(&buffer[0], 512, reason, args);
+    fatal_error_callback(&buffer[0]);
+        
+    va_end(args);
 }

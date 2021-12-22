@@ -154,6 +154,11 @@ void __pdprint_replace(short color, const char* str, ...)
     va_end(args);
 }
 
+void on_device_error(const char* error)
+{
+    terminate(error);
+}
+
 
 /*==============================
     terminate
@@ -255,26 +260,6 @@ static void terminate_v(const char* reason, va_list args)
         attroff(COLOR_PAIR(i+1));
     endwin();
     exit(-1);
-}
-
-
-/*==============================
-    testcommand
-    Terminates the program if the command fails
-    @param The return value from an FTDI function
-    @param Text to print if the command failed
-    @param Variadic arguments to print as well
-==============================*/
-
-void testcommand(FT_STATUS status, const char* reason, ...)
-{
-    va_list args;
-    va_start(args, reason);
-
-    // Test the command
-    if (status != FT_OK)
-        terminate_v(reason, args);
-    va_end(args);
 }
 
 

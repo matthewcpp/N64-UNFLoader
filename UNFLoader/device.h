@@ -29,12 +29,14 @@
         int z64;
     } device_sendrom_params_t;
 
+    typedef void(*device_fatal_error_callback_t)(const char* message);
+
     /*********************************
             Function Prototypes
     *********************************/
 
-   void device_sendrom_params_init(device_sendrom_params_t* params);
-
+    void  device_sendrom_params_init(device_sendrom_params_t* params);
+    void  device_set_fatal_error_callback(device_fatal_error_callback_t callback);
     void  device_find(int automode);
     void  device_open();
     void  device_sendrom(const char* rompath, device_sendrom_params_t* params);

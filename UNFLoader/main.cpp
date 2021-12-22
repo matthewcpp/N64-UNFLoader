@@ -102,6 +102,8 @@ int main(int argc, char* argv[])
     if (local_rom == NULL)
         terminate("Missing ROM argument (-r <ROM NAME HERE>)\n");
 
+    device_set_fatal_error_callback(on_device_error);
+    
     // Upload the ROM and start debug mode if necessary
     device_find(local_flashcart);
     device_open();

@@ -36,10 +36,10 @@
     #define pdprintw_nolog(window, string, color, ...) __pdprintw(window, color, 0, string, ##__VA_ARGS__)
     #define pdprint_replace(string, color, ...) __pdprint_replace(color, string, ##__VA_ARGS__)
     void terminate(const char* reason, ...);
+    void on_device_error(const char* error);
     void progressbar_draw(const char* text, short color, float percent);
 
     // Useful functions
-    void  testcommand(FT_STATUS status, const char* reason, ...);
     u32   swap_endian(u32 val);
     u32   calc_padsize(u32 size);
     char* gen_filename();

@@ -30,4 +30,6 @@ typedef struct {
     u32          current_dma_bytes_read; // the total amount of bytes read in the current message
 } ftdi_context_t;
 
+void  testcommand(FT_STATUS status, const char* reason, ...);
+
 #endif
