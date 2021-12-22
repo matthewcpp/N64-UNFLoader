@@ -15,9 +15,8 @@ add_library(lib64device STATIC ${device_lib_sources})
 
 target_include_directories(lib64device PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/Include)
 
-
 if(WIN32)
-	target_compile_definitions(lib64device PRIVATE UNFLOADER_CMAKE _CRT_SECURE_NO_WARNINGS)
+	target_compile_definitions(lib64device PUBLIC UNFLOADER_CMAKE _CRT_SECURE_NO_WARNINGS)
 	target_link_libraries(lib64device PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/Include/ftd2xx.lib)
 endif()
 
