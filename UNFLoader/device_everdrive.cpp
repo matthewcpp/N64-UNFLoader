@@ -146,7 +146,7 @@ void device_sendrom_everdrive(ftdi_context_t* cart, FILE *file, u32 size, device
     if ((int)size < crc_area)
     {
         char recv_buff[16];
-        pdprint("Filling ROM.\n", CRDEF_PROGRAM);
+        log_message("Filling ROM.\n");
         device_sendcmd_everdrive(cart, 'c', 0x10000000, crc_area, 0);
         device_sendcmd_everdrive(cart, 't', 0, 0, 0);
         FT_Read(cart->handle, recv_buff, 16, &cart->bytes_read);
@@ -154,14 +154,13 @@ void device_sendrom_everdrive(ftdi_context_t* cart, FILE *file, u32 size, device
 
     // Savetype message
     if (params->savetype != 0)
-        pdprint("Save type set to %d.\n", CRDEF_PROGRAM, params->savetype);
+        log_message("Save type set to %d.\n", params->savetype);
 
     // Get the correctly padded ROM size
     size = calc_padsize(size);
     bytes_left = size;
 
     // Initialize the progress bar
-    pdprint("\n", CRDEF_PROGRAM);
     sendrom_progress(0);
 
     // Send a command saying we're about to write to the cart
@@ -244,7 +243,7 @@ void device_sendrom_everdrive(ftdi_context_t* cart, FILE *file, u32 size, device
     #else
         usleep(500);
     #endif
-    pdprint_replace("Sending pifboot\n", CRDEF_PROGRAM);
+    log_message("Sending pifboot\n", CRDEF_PROGRAM);
     device_sendcmd_everdrive(cart, 's', 0, 0, 0);
 
     // Write the filename of the save file if necessary
@@ -305,7 +304,6 @@ void device_senddata_everdrive(ftdi_context_t* cart, int datatype, char* data, u
     FT_Write(cart->handle, buffer, 16, &cart->bytes_written);
 
     // Upload the data
-    pdprint("\n", CRDEF_PROGRAM);
     senddata_progress(0);
     for ( ; ; )
     {

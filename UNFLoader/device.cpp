@@ -40,13 +40,19 @@ static void  device_set_sc64(ftdi_context_t* cart, int index);
 *********************************/
 
 static ftdi_context_t local_usb = {0, };
-static device_fatal_error_callback_t fatal_error_callback = NULL;
+static device_message_callback_t fatal_error_callback = NULL;
+static device_message_callback_t message_callback = NULL;
 static device_transfer_progress_callback_t sendrom_progress_callback = NULL;
 static device_transfer_progress_callback_t senddata_progress_callback = NULL;
 
-void device_set_fatal_error_callback(device_fatal_error_callback_t callback)
+void device_set_fatal_error_callback(device_message_callback_t callback)
 {
     fatal_error_callback = callback;
+}
+
+void device_set_message_callback(device_message_callback_t callback)
+{
+    message_callback = callback;
 }
 
 void device_set_sendrom_progress_callback(device_transfer_progress_callback_t callback)
@@ -431,6 +437,22 @@ void testcommand(FT_STATUS status, const char* reason, ...)
 
     vsprintf_s(&buffer[0], 512, reason, args);
     fatal_error_callback(&buffer[0]);
+        
+    va_end(args);
+}
+
+void log_message(const char* message, ...)
+{
+    if (!message_callback)
+        return;
+
+    char buffer[512];
+
+    va_list args;
+    va_start(args, message);
+
+    vsprintf_s(&buffer[0], 512, message, args);
+    message_callback(&buffer[0]);
         
     va_end(args);
 }

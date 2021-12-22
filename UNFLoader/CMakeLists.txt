@@ -6,7 +6,7 @@ set(device_lib_sources
 	device_everdrive.h device_everdrive.cpp
 	device_64drive.h device_64drive.cpp
 	device_sc64.h device_sc64.cpp
-	device.h device.cpp
+	device.h device_context.h device.cpp
 	helper.h helper.cpp
 	helper_internal.h
 )

@@ -179,22 +179,22 @@ void device_sendrom_64drive(ftdi_context_t* cart, FILE *file, u32 size, device_s
             device_sendcmd_64drive(cart, DEV_CMD_SETCIC, false, 1, (1 << 31) | cic, 0);
             if (cic == 303)
                 terminate("The 8303 CIC is not supported through USB");
-            pdprint("CIC set to ", CRDEF_PROGRAM);
+            const char* cic_str = NULL;
             switch (cic)
             {
-                case 0: pdprint("6101", CRDEF_PROGRAM); break;
-                case 1: pdprint("6102", CRDEF_PROGRAM); break;
-                case 2: pdprint("7101", CRDEF_PROGRAM); break;
-                case 3: pdprint("7102", CRDEF_PROGRAM); break;
-                case 4: pdprint("x103", CRDEF_PROGRAM); break;
-                case 5: pdprint("x105", CRDEF_PROGRAM); break;
-                case 6: pdprint("x106", CRDEF_PROGRAM); break;
-                case 7: pdprint("5101", CRDEF_PROGRAM); break;
+                case 0: cic_str = "6101"; break;
+                case 1: cic_str = "6102"; break;
+                case 2: cic_str = "7101"; break;
+                case 3: cic_str = "7102"; break;
+                case 4: cic_str = "x103"; break;
+                case 5: cic_str = "x105"; break;
+                case 6: cic_str = "x106"; break;
+                case 7: cic_str = "5101"; break;
             }
-            pdprint(" automatically.\n", CRDEF_PROGRAM);
+            log_message("CIC set to %s automatically.\n", cic_str);
         }
         else
-            pdprint("Unknown CIC! Game might not boot properly!\n", CRDEF_PROGRAM);
+            log_message("Unknown CIC! Game might not boot properly!\n");
 
         // Free used memory
         free(bootcode);
@@ -235,14 +235,14 @@ void device_sendrom_64drive(ftdi_context_t* cart, FILE *file, u32 size, device_s
         // Set the CIC
         cart->cictype = params->cictype;
         device_sendcmd_64drive(cart, DEV_CMD_SETCIC, false, 1, (1 << 31) | cic, 0);
-        pdprint("CIC set to %d.\n", CRDEF_PROGRAM, params->cictype);
+        log_message("CIC set to %d.\n", params->cictype);
     }
 
     // Set Savetype
     if (params->savetype != 0)
     {
         device_sendcmd_64drive(cart, DEV_CMD_SETSAVE, false, 1, params->savetype, 0);
-        pdprint("Save type set to %d.\n", CRDEF_PROGRAM, params->savetype);
+        log_message("Save type set to %d.\n", params->savetype);
     }
 
     // Decide a better, more optimized chunk size
@@ -255,7 +255,6 @@ void device_sendrom_64drive(ftdi_context_t* cart, FILE *file, u32 size, device_s
     chunk *= 128 * 1024; // Convert to megabytes
 
     // Send chunks to the cart
-    pdprint("\n", CRDEF_PROGRAM);
     sendrom_progress(0);
     for ( ; ; )
     {
@@ -375,7 +374,6 @@ void device_senddata_64drive(ftdi_context_t* cart, int datatype, char* data, u32
     // Copy the data onto a temp variable
     datacopy = (char*) calloc(newsize, 1);
     memcpy(datacopy, data, size);
-    pdprint("\n", CRDEF_PROGRAM);
     senddata_progress(0.0);
 
     // Send this block of data

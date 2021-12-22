@@ -159,6 +159,10 @@ void on_device_error(const char* error)
     terminate(error);
 }
 
+void on_device_message(const char* message) {
+    pdprint(message, CRDEF_PROGRAM);
+}
+
 /*==============================
     terminate
     Stops the program and prints "Press any key to continue..."
@@ -280,10 +284,16 @@ u32 swap_endian(u32 val)
 
 void on_sendrom_progress(float percent)
 {
+    if (percent == 0.0f)
+        pdprint("\n", CRDEF_PROGRAM);
+
     progressbar_draw("Uploading ROM", CRDEF_PROGRAM, percent);
 }
 
 void on_senddata_progress(float percent) {
+    if (percent == 0.0f)
+        pdprint("\n", CRDEF_PROGRAM);
+
     progressbar_draw("Uploading data", CRDEF_INFO, percent);
 }
 

@@ -103,6 +103,7 @@ int main(int argc, char* argv[])
         terminate("Missing ROM argument (-r <ROM NAME HERE>)\n");
 
     device_set_fatal_error_callback(on_device_error);
+    device_set_message_callback(on_device_message);
     device_set_sendrom_progress_callback(on_sendrom_progress);
     device_set_senddata_progress_callback(on_senddata_progress);
 

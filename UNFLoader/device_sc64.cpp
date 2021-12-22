@@ -178,7 +178,7 @@ void device_sendrom_sc64(ftdi_context_t* cart, FILE* file, u32 size, device_send
             default: terminate("Unknown or unsupported CIC type '%d'.", params->cictype);
         }
         cart->cictype = params->cictype;
-        pdprint("CIC set to %d (cic_seed = %d, tv_type = %d, skip = %s).\n", CRDEF_PROGRAM, params->cictype, cic, tv, skip ? "yes" : "no");
+        log_message("CIC set to %d (cic_seed = %d, tv_type = %d, skip = %s).\n", params->cictype, cic, tv, skip ? "yes" : "no");
     }
 
     // Commit CIC and TV settings
@@ -188,7 +188,7 @@ void device_sendrom_sc64(ftdi_context_t* cart, FILE* file, u32 size, device_send
 
     // Set savetype if provided
     if (params->savetype > 0 && params->savetype <= 6) {
-        pdprint("Save type set to %d, %s.\n", CRDEF_PROGRAM, params->savetype, save_names[params->savetype - 1]);
+        log_message("Save type set to %d, %s.\n", params->savetype, save_names[params->savetype - 1]);
     } else {
         params->savetype = 0;
     }
@@ -198,7 +198,6 @@ void device_sendrom_sc64(ftdi_context_t* cart, FILE* file, u32 size, device_send
     device_send_cmd_sc64(cart, DEV_CMD_CONFIG, DEV_CONFIG_SAVE_TYPE, params->savetype, true);
 
     // Init progressbar
-    pdprint("\n", CRDEF_PROGRAM);
     sendrom_progress(0);
 
     // Prepare variables

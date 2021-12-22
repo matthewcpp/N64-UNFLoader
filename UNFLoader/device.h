@@ -29,7 +29,7 @@
         int z64;
     } device_sendrom_params_t;
 
-    typedef void(*device_fatal_error_callback_t)(const char* message);
+    typedef void(*device_message_callback_t)(const char* message);
     typedef void(*device_transfer_progress_callback_t)(float progress);
 
     /*********************************
@@ -37,9 +37,10 @@
     *********************************/
 
     void  device_sendrom_params_init(device_sendrom_params_t* params);
-    void  device_set_fatal_error_callback(device_fatal_error_callback_t callback);
+    void  device_set_fatal_error_callback(device_message_callback_t callback);
     void  device_set_sendrom_progress_callback(device_transfer_progress_callback_t callback);
     void  device_set_senddata_progress_callback(device_transfer_progress_callback_t callback);
+    void  device_set_message_callback(device_message_callback_t callback);
     void  device_find(int automode);
     void  device_open();
     void  device_sendrom(const char* rompath, device_sendrom_params_t* params);
