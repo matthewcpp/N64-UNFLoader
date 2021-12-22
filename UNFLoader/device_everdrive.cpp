@@ -130,7 +130,7 @@ void device_sendcmd_everdrive(ftdi_context_t* cart, char command, int address, i
     @param The size of the ROM
 ==============================*/
 
-void device_sendrom_everdrive(ftdi_context_t* cart, FILE *file, u32 size)
+void device_sendrom_everdrive(ftdi_context_t* cart, FILE *file, u32 size, device_sendrom_params_t* params)
 {
     int	   bytes_done = 0;
     int	   bytes_left;
@@ -154,8 +154,8 @@ void device_sendrom_everdrive(ftdi_context_t* cart, FILE *file, u32 size)
     }
 
     // Savetype message
-    if (global_savetype != 0)
-        pdprint("Save type set to %d.\n", CRDEF_PROGRAM, global_savetype);
+    if (params->savetype != 0)
+        pdprint("Save type set to %d.\n", CRDEF_PROGRAM, params->savetype);
 
     // Get the correctly padded ROM size
     size = calc_padsize(size);
@@ -198,16 +198,16 @@ void device_sendrom_everdrive(ftdi_context_t* cart, FILE *file, u32 size)
 
             // Read the ROM to the buffer and byteswap it if needed
             fread(rom_buffer, bytes_do, 1, file);
-            if (global_z64)
+            if (params->z64)
                 for (j=0; j<bytes_do; j+=2)
                     SWAP(rom_buffer[j], rom_buffer[j+1]);
 
             // Set Savetype if first time sending data
-            if (global_savetype != 0 && bytes_done == 0)
+            if (params->savetype != 0 && bytes_done == 0)
             {
                 rom_buffer[0x3C] = 'E';
                 rom_buffer[0x3D] = 'D';
-                switch (global_savetype)
+                switch (params->savetype)
                 {
                     case 1: rom_buffer[0x3F] = 0x10; break;
                     case 2: rom_buffer[0x3F] = 0x20; break;
@@ -249,7 +249,7 @@ void device_sendrom_everdrive(ftdi_context_t* cart, FILE *file, u32 size)
     device_sendcmd_everdrive(cart, 's', 0, 0, 0);
 
     // Write the filename of the save file if necessary
-    if (global_savetype != 0)
+    if (params->savetype != 0)
     {
         u32 i;
         u32 len = strlen(global_filename);

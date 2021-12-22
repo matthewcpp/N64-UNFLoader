@@ -17,31 +17,27 @@
                  Typedefs
     *********************************/
 
-    typedef struct {
-        DWORD        devices;
-        int          device_index;
-        FT_STATUS    status;
-        FT_DEVICE_LIST_INFO_NODE *dev_info;
-        FT_HANDLE    handle;
-        DWORD        synchronous; // For 64Drive
-        DWORD        bytes_written;
-        DWORD        bytes_read;
-        DWORD        carttype;
-        DWORD        cictype;
-        u32          current_dma_bytes_read; // the total amount of bytes read in the current message
-    } ftdi_context_t;
+
     #ifdef LINUX
         typedef int errno_t;
     #endif
 
 
+    typedef struct {
+        int cictype;
+        u32 savetype;
+        int z64;
+    } device_sendrom_params_t;
+
     /*********************************
             Function Prototypes
     *********************************/
 
+   void device_sendrom_params_init(device_sendrom_params_t* params);
+
     void  device_find(int automode);
     void  device_open();
-    void  device_sendrom(FILE* f, int filesize);
+    void  device_sendrom(const char* rompath, device_sendrom_params_t* params);
     void  device_senddata(int datatype, char* data, u32 size);
     bool  device_isopen();
     DWORD device_getcarttype();

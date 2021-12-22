@@ -114,7 +114,7 @@ void device_open_sc64(ftdi_context_t* cart)
     @param The size of the ROM
 ==============================*/
 
-void device_sendrom_sc64(ftdi_context_t* cart, FILE* file, u32 size)
+void device_sendrom_sc64(ftdi_context_t* cart, FILE* file, u32 size, device_sendrom_params_t* params)
 {
     size_t chunk;
     u8* rom_buffer;
@@ -150,8 +150,8 @@ void device_sendrom_sc64(ftdi_context_t* cart, FILE* file, u32 size)
     skip = 0;
 
     // Set CIC and TV type if provided
-    if (global_cictype != -1 && cart->cictype == 0) {
-        switch (global_cictype) {
+    if (params->cictype != -1 && cart->cictype == 0) {
+        switch (params->cictype) {
             case 0:
             case 6101: cic = 0x13F; tv = 0; break;
             case 1:
@@ -176,10 +176,10 @@ void device_sendrom_sc64(ftdi_context_t* cart, FILE* file, u32 size)
             case 5101: cic = 0xAC; tv = 0; break;
             case 8303: cic = 0xDD; tv = 0; break;
             case 1234: skip = 1; break;
-            default: terminate("Unknown or unsupported CIC type '%d'.", global_cictype);
+            default: terminate("Unknown or unsupported CIC type '%d'.", params->cictype);
         }
-        cart->cictype = global_cictype;
-        pdprint("CIC set to %d (cic_seed = %d, tv_type = %d, skip = %s).\n", CRDEF_PROGRAM, global_cictype, cic, tv, skip ? "yes" : "no");
+        cart->cictype = params->cictype;
+        pdprint("CIC set to %d (cic_seed = %d, tv_type = %d, skip = %s).\n", CRDEF_PROGRAM, params->cictype, cic, tv, skip ? "yes" : "no");
     }
 
     // Commit CIC and TV settings
@@ -188,15 +188,15 @@ void device_sendrom_sc64(ftdi_context_t* cart, FILE* file, u32 size)
     device_send_cmd_sc64(cart, DEV_CMD_CONFIG, DEV_CONFIG_SKIP_BOOTLOADER, (u32) skip, true);
 
     // Set savetype if provided
-    if (global_savetype > 0 && global_savetype <= 6) {
-        pdprint("Save type set to %d, %s.\n", CRDEF_PROGRAM, global_savetype, save_names[global_savetype - 1]);
+    if (params->savetype > 0 && params->savetype <= 6) {
+        pdprint("Save type set to %d, %s.\n", CRDEF_PROGRAM, params->savetype, save_names[params->savetype - 1]);
     } else {
-        global_savetype = 0;
+        params->savetype = 0;
     }
 
     // Commit save setting
 
-    device_send_cmd_sc64(cart, DEV_CMD_CONFIG, DEV_CONFIG_SAVE_TYPE, global_savetype, true);
+    device_send_cmd_sc64(cart, DEV_CMD_CONFIG, DEV_CONFIG_SAVE_TYPE, params->savetype, true);
 
     // Init progressbar
     pdprint("\n", CRDEF_PROGRAM);
@@ -220,7 +220,7 @@ void device_sendrom_sc64(ftdi_context_t* cart, FILE* file, u32 size)
 
         // Read ROM from file to buffer
         fread(rom_buffer, sizeof(u8), chunk, file);
-        if (global_z64) {
+        if (params->z64) {
             for (size_t i = 0; i < chunk; i += 2) {
                 SWAP(rom_buffer[i], rom_buffer[i + 1]);
             }

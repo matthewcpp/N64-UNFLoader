@@ -2,6 +2,7 @@
 #define __DEVICE_64DRIVE_HEADER
 
     #include "device.h"
+    #include "device_context.h"
 
 
     /*********************************
@@ -36,7 +37,7 @@
     bool device_test_64drive1(ftdi_context_t* cart, int index);
     bool device_test_64drive2(ftdi_context_t* cart, int index);
     void device_open_64drive(ftdi_context_t* cart);
-    void device_sendrom_64drive(ftdi_context_t* cart, FILE *file, u32 size);
+    void device_sendrom_64drive(ftdi_context_t* cart, FILE *file, u32 size, device_sendrom_params_t* params);
     void device_senddata_64drive(ftdi_context_t* cart, int datatype, char* data, u32 size);
     void device_close_64drive(ftdi_context_t* cart);
 

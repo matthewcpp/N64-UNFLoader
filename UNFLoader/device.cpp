@@ -6,6 +6,7 @@ Passes flashcart communication to more specific functions
 
 
 #include "main.h"
+#include "device_context.h"
 #include "helper.h"
 #include "device.h"
 #include "device_64drive.h"
@@ -13,12 +14,14 @@ Passes flashcart communication to more specific functions
 #include "device_sc64.h"
 
 
+
+
 /*********************************
         Function Pointers
 *********************************/
 
 void (*funcPointer_open)(ftdi_context_t*);
-void (*funcPointer_sendrom)(ftdi_context_t*, FILE *file, u32 size);
+void (*funcPointer_sendrom)(ftdi_context_t*, FILE *file, u32 size, device_sendrom_params_t* params);
 void (*funcPointer_senddata)(ftdi_context_t*, int datatype, char *data, u32 size);
 void (*funcPointer_close)(ftdi_context_t*);
 
@@ -220,8 +223,25 @@ void device_open()
     @param file handle to ROM
     @param size of rom
 ==============================*/
-void  device_sendrom(FILE* f, int filesize) {
-    funcPointer_sendrom(&local_usb, f, filesize);
+void device_sendrom(const char* rompath, device_sendrom_params_t* params) 
+{
+    FILE*  file = fopen(rompath, "rb");
+
+    if (file == NULL)
+    {
+        device_close();
+        terminate("Unable to open file '%s'.\n", rompath);
+    }
+
+    int filesize = 0;
+
+    fseek(file, 0, SEEK_END);
+    filesize = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    funcPointer_sendrom(&local_usb, file, filesize, params);
+
+    fclose(file);
 }
 
 
@@ -299,7 +319,8 @@ DWORD device_get_pending()
     Begins reading from the device and validates the dma header
     Returns the header info value
 ==============================*/
-u32 device_begin_read() {
+u32 device_begin_read()
+{
     ftdi_context_t* cart = &local_usb;
     char outbuff[4];
     cart->current_dma_bytes_read = 0;
@@ -322,7 +343,8 @@ u32 device_begin_read() {
     Ends a current DMA read by validating completion signal and updating alignment
     Returns the header info value
 ==============================*/
-void device_end_read() {
+void device_end_read()
+{
     ftdi_context_t* cart = &local_usb;
     char outbuff[16];
 
@@ -354,11 +376,18 @@ void device_end_read() {
     Begins reading from the device and validates the dma header
     Returns the header info value
 ==============================*/
-DWORD device_read(char* buffer, int size) {
+DWORD device_read(char* buffer, int size)
+{
     ftdi_context_t* cart = &local_usb;
 
     FT_Read(cart->handle, buffer, size, &cart->bytes_read);
     cart->current_dma_bytes_read += cart->bytes_read;
 
     return cart->bytes_read;
+}
+
+void device_sendrom_params_init(device_sendrom_params_t* params) {
+    params->cictype = 1;
+    params->savetype = 0;
+    params->z64 = 0;
 }

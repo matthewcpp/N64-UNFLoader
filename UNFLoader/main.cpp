@@ -42,11 +42,8 @@ void sendrom(char* rompath);
 
 // Program globals
 bool    global_usecolors = true;
-int     global_cictype = -1;
-u32     global_savetype = 0;
 bool    global_listenmode = false;
 bool    global_debugmode = false;
-bool    global_z64 = false;
 char* global_debugout = NULL;
 FILE* global_debugoutptr = NULL;
 char* global_exportpath = NULL;
@@ -55,6 +52,8 @@ time_t  global_timeouttime = 0;
 bool    global_closefail = false;
 char* global_filename = NULL;
 WINDOW* global_window = NULL;
+
+device_sendrom_params_t global_sendrom_params;
 
 // Local globals
 static int   local_flashcart = CART_NONE;
@@ -72,6 +71,8 @@ static char* local_rom = NULL;
 int main(int argc, char* argv[])
 {
     int i;
+
+    device_sendrom_params_init(&global_sendrom_params);
 
     // Initialize PDCurses
 #ifdef LINUX
@@ -153,7 +154,7 @@ void sendrom(char* rompath)
         // Read the ROM header to check if its byteswapped
         fread(rom_header, 4, 1, file);
         if (!(rom_header[0] == 0x80 && rom_header[1] == 0x37 && rom_header[2] == 0x12 && rom_header[3] == 0x40))
-            global_z64 = true;
+            global_sendrom_params.z64 = true;
 
         // Get the filesize and reset the position
         // Workaround for https://stackoverflow.com/questions/32452777/visual-c-2015-express-stat-not-working-on-windows-xp
@@ -219,7 +220,7 @@ void sendrom(char* rompath)
             pdprint("ROM is smaller than 1MB, it might not boot properly.\n", CRDEF_PROGRAM);
 
         // Send the ROM
-        device_sendrom(file, filesize);
+        device_sendrom(rompath, &global_sendrom_params);
 
         // Close the file pipe and start the timeout
         fclose(file);
@@ -309,9 +310,9 @@ void parse_args(int argc, char* argv[])
             if (i < argc && argv[i][0] != '-')
             {
                 if (isdigit(argv[i][0]))
-                    global_cictype = strtol(argv[i], NULL, 0);
+                    global_sendrom_params.cictype = strtol(argv[i], NULL, 0);
                 else
-                    global_cictype = strtol(argv[i] + 1, NULL, 0);
+                    global_sendrom_params.cictype = strtol(argv[i] + 1, NULL, 0);
             }
             else
                 terminate("Missing parameter(s) for command '%s'.", command);
@@ -322,7 +323,7 @@ void parse_args(int argc, char* argv[])
 
             // If we have an argument after this one, then set the save type, otherwise terminate
             if (i < argc && argv[i][0] != '-')
-                global_savetype = strtol(argv[i], NULL, 0);
+                global_sendrom_params.savetype = strtol(argv[i], NULL, 0);
             else
                 terminate("Missing parameter(s) for command '%s'.", command);
         }

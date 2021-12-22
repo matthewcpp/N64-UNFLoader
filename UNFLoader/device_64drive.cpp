@@ -137,7 +137,7 @@ void device_sendcmd_64drive(ftdi_context_t* cart, u8 command, bool reply, u32 nu
     @param The size of the ROM
 ==============================*/
 
-void device_sendrom_64drive(ftdi_context_t* cart, FILE *file, u32 size)
+void device_sendrom_64drive(ftdi_context_t* cart, FILE *file, u32 size, device_sendrom_params_t* params)
 {
     u32    ram_addr = 0x0;
     int	   bytes_left = size;
@@ -153,7 +153,7 @@ void device_sendrom_64drive(ftdi_context_t* cart, FILE *file, u32 size)
         terminate("Unable to allocate memory for buffer.");
 
     // Handle CIC
-    if (global_cictype == -1)
+    if (params->cictype == -1)
     {
         int cic = -1;
         int j;
@@ -167,7 +167,7 @@ void device_sendrom_64drive(ftdi_context_t* cart, FILE *file, u32 size)
         fseek(file, 0, SEEK_SET);
 
         // Byteswap if needed
-        if (global_z64)
+        if (params->z64)
             for (j=0; j<4032; j+=2)
                 SWAP(bootcode[j], bootcode[j+1]);
 
@@ -176,7 +176,7 @@ void device_sendrom_64drive(ftdi_context_t* cart, FILE *file, u32 size)
         if (cic != -1)
         {
             // Set the CIC and print it
-            cart->cictype = global_cictype;
+            cart->cictype = params->cictype;
             device_sendcmd_64drive(cart, DEV_CMD_SETCIC, false, 1, (1 << 31) | cic, 0);
             if (cic == 303)
                 terminate("The 8303 CIC is not supported through USB");
@@ -205,7 +205,7 @@ void device_sendrom_64drive(ftdi_context_t* cart, FILE *file, u32 size)
         int cic = -1;
 
         // Get the CIC key
-        switch(global_cictype)
+        switch(params->cictype)
         {
             case 0:
             case 6101: cic = 0; break;
@@ -230,20 +230,20 @@ void device_sendrom_64drive(ftdi_context_t* cart, FILE *file, u32 size)
             case 7:
             case 5101: cic = 7; break;
             case 303: terminate("This CIC is not supported through USB");
-            default: terminate("Unknown CIC type '%d'.", global_cictype);
+            default: terminate("Unknown CIC type '%d'.", params->cictype);
         }
 
         // Set the CIC
-        cart->cictype = global_cictype;
+        cart->cictype = params->cictype;
         device_sendcmd_64drive(cart, DEV_CMD_SETCIC, false, 1, (1 << 31) | cic, 0);
-        pdprint("CIC set to %d.\n", CRDEF_PROGRAM, global_cictype);
+        pdprint("CIC set to %d.\n", CRDEF_PROGRAM, params->cictype);
     }
 
     // Set Savetype
-    if (global_savetype != 0)
+    if (params->savetype != 0)
     {
-        device_sendcmd_64drive(cart, DEV_CMD_SETSAVE, false, 1, global_savetype, 0);
-        pdprint("Save type set to %d.\n", CRDEF_PROGRAM, global_savetype);
+        device_sendcmd_64drive(cart, DEV_CMD_SETSAVE, false, 1, params->savetype, 0);
+        pdprint("Save type set to %d.\n", CRDEF_PROGRAM, params->savetype);
     }
 
     // Decide a better, more optimized chunk size
@@ -292,7 +292,7 @@ void device_sendrom_64drive(ftdi_context_t* cart, FILE *file, u32 size)
             // Send the chunk to RAM
             device_sendcmd_64drive(cart, DEV_CMD_LOADRAM, false, 2, ram_addr, (bytes_do & 0xffffff) | 0 << 24);
             fread(rom_buffer, bytes_do, 1, file);
-                  if (global_z64)
+                  if (params->z64)
                       for (j=0; j<bytes_do; j+=2)
                           SWAP(rom_buffer[j], rom_buffer[j+1]);
             FT_Write(cart->handle, rom_buffer, bytes_do, &cart->bytes_written);

@@ -2,6 +2,7 @@
 #define __DEVICE_SC64_HEADER
 
     #include "device.h"
+    #include "device_context.h"
 
 
     /*********************************
@@ -24,7 +25,7 @@
 
     bool device_test_sc64(ftdi_context_t* cart, int index);
     void device_open_sc64(ftdi_context_t* cart);
-    void device_sendrom_sc64(ftdi_context_t* cart, FILE *file, u32 size);
+    void device_sendrom_sc64(ftdi_context_t* cart, FILE *file, u32 size, device_sendrom_params_t* params);
     void device_senddata_sc64(ftdi_context_t* cart, int datatype, char* data, u32 size);
     void device_close_sc64(ftdi_context_t* cart);
 
