@@ -28,6 +28,7 @@
         DWORD        bytes_read;
         DWORD        carttype;
         DWORD        cictype;
+        u32          current_dma_bytes_read; // the total amount of bytes read in the current message
     } ftdi_context_t;
     #ifdef LINUX
         typedef int errno_t;
@@ -39,16 +40,17 @@
     *********************************/
 
     void  device_find(int automode);
-    void  device_set_64drive1(ftdi_context_t* cart, int index);
-    void  device_set_64drive2(ftdi_context_t* cart, int index);
-    void  device_set_everdrive(ftdi_context_t* cart, int index);
-    void  device_set_sc64(ftdi_context_t* cart, int index);
     void  device_open();
     void  device_sendrom(FILE* f, int filesize);
     void  device_senddata(int datatype, char* data, u32 size);
     bool  device_isopen();
     DWORD device_getcarttype();
     void  device_close();
+
+    DWORD device_get_pending();
+    u32 device_begin_read();
+    DWORD device_read(char* buffer, int size);
+    void device_end_read();
 
     ftdi_context_t* device_get_cart();
 

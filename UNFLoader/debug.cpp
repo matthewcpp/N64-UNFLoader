@@ -56,7 +56,7 @@ static int cmd_count = 0;
 void debug_main(ftdi_context_t *cart)
 {
     int i;
-    int alignment;
+    
     char *outbuff, *inbuff;
     u16 cursorpos = 0;
     DWORD pending = 0;
@@ -93,14 +93,6 @@ void debug_main(ftdi_context_t *cart)
         }
     }
 
-    // Decide the alignment based off the cart that's connected
-    switch (cart->carttype)
-    {
-        case CART_EVERDRIVE: alignment = 16; break;
-        case CART_SC64: alignment = 4; break;
-        default: alignment = 0;
-    }
-
     // Start the debug server loop
     for ( ; ; ) 
 	{
@@ -112,7 +104,7 @@ void debug_main(ftdi_context_t *cart)
         debug_textinput(inputwin, inbuff, &cursorpos, ch);
 
         // Check if we have pending data
-        FT_GetQueueStatus(cart->handle, &pending);
+        pending = device_get_pending();
         if (pending > 0)
         {
             u32 info, read = 0;
@@ -120,36 +112,16 @@ void debug_main(ftdi_context_t *cart)
                 pdprint("Receiving %d bytes\n", CRDEF_INFO, pending);
             #endif
 
-            // Ensure we have valid data by reading the header
-            FT_Read(cart->handle, outbuff, 4, &cart->bytes_read);
-            read += cart->bytes_read;
-            if (outbuff[0] != 'D' || outbuff[1] != 'M' || outbuff[2] != 'A' || outbuff[3] != '@')
-                terminate("Unexpected DMA header: %c %c %c %c.", outbuff[0], outbuff[1], outbuff[2], outbuff[3]);
-
-            // Get information about the incoming data
-            FT_Read(cart->handle, outbuff, 4, &cart->bytes_read);
-            read += cart->bytes_read;
-            info = swap_endian(outbuff[3] << 24 | outbuff[2] << 16 | outbuff[1] << 8 | outbuff[0]);
+           info = device_begin_read();
 
             // Decide what to do with the received data
             debug_decidedata(cart, info, outbuff, &read);
 
-            // Read the completion signal
-            FT_Read(cart->handle, outbuff, 4, &cart->bytes_read);
-            read += cart->bytes_read;
-            if (outbuff[0] != 'C' || outbuff[1] != 'M' || outbuff[2] != 'P' || outbuff[3] != 'H')
-                terminate("Did not receive completion signal: %c %c %c %c.", outbuff[0], outbuff[1], outbuff[2], outbuff[3]);
-
-            // Ensure byte alignment by reading X amount of bytes needed
-            if (alignment != 0 && (read % alignment) != 0)
-            {
-                int left = alignment - (read % alignment);
-                FT_Read(cart->handle, outbuff, left, &cart->bytes_read);
-            }
+            device_end_read();
         }
 
         // If we got no more data, sleep a bit to be kind to the CPU
-        FT_GetQueueStatus(cart->handle, &pending);
+        pending = device_get_pending();
         if (pending == 0)
         {
             #ifndef LINUX
@@ -553,7 +525,7 @@ void debug_handle_text(ftdi_context_t* cart, u32 size, char* buffer, u32* read)
     while (left != 0)
     {
         // Read from the USB and print it
-        FT_Read(cart->handle, buffer, left, &cart->bytes_read);
+        device_read(buffer, left);
         pdprint("%.*s", CRDEF_PRINT, cart->bytes_read, buffer);
 
         // Store the amount of bytes read
@@ -619,7 +591,7 @@ void debug_handle_rawbinary(ftdi_context_t* cart, u32 size, char* buffer, u32* r
     while (left != 0)
     {
         // Read from the USB and save it to our binary file
-        FT_Read(cart->handle, buffer, left, &cart->bytes_read);
+        device_read(buffer, left);
         fwrite(buffer, 1, left, fp);
 
         // Store the amount of bytes read
@@ -662,7 +634,7 @@ void debug_handle_header(ftdi_context_t* cart, u32 size, char* buffer, u32* read
     while (left != 0)
     {
         // Read from the USB and save it to the global headerdata
-        FT_Read(cart->handle, buffer, left, &cart->bytes_read);
+        device_read(buffer, left);
         for (int i=0; i<(int)cart->bytes_read; i+=4)
             debug_headerdata[i/4] = swap_endian(buffer[i + 3] << 24 | buffer[i + 2] << 16 | buffer[i + 1] << 8 | buffer[i]);
 
@@ -732,7 +704,7 @@ void debug_handle_screenshot(ftdi_context_t* cart, u32 size, char* buffer, u32* 
     while (left != 0)
     {
         // Read from the USB and save it to our binary file
-        FT_Read(cart->handle, buffer, left, &cart->bytes_read);
+        device_read(buffer, left);
         for (int i=0; i<(int)cart->bytes_read; i+=4)
         {
             int texel = swap_endian((buffer[i+3]<<24)&0xFF000000 | (buffer[i+2]<<16)&0xFF0000 | (buffer[i+1]<<8)&0xFF00 | buffer[i]&0xFF);

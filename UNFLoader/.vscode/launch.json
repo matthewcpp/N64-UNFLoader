@@ -1,0 +1,19 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "(Windows) Launch",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/Debug/UNFLoader.exe",
+            "args": ["-d", "-r", "D:/development/repos/framework64/build_n64/bin/data_link.z64"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/Debug/",
+            "environment": [],
+            "console": "externalTerminal"
+        }
+    ]
+}

@@ -24,6 +24,15 @@ void (*funcPointer_close)(ftdi_context_t*);
 
 
 /*********************************
+        Function Prototypes
+*********************************/
+static void  device_set_64drive1(ftdi_context_t* cart, int index);
+static void  device_set_64drive2(ftdi_context_t* cart, int index);
+static void  device_set_everdrive(ftdi_context_t* cart, int index);
+static void  device_set_sc64(ftdi_context_t* cart, int index);
+
+
+/*********************************
              Globals
 *********************************/
 
@@ -281,3 +290,84 @@ void device_close()
     pdprint("USB connection closed.\n", CRDEF_PROGRAM);
 }
 
+
+/*==============================
+    device_get_pending
+    Returns the amount of data in the device queue
+==============================*/
+DWORD device_get_pending()
+{
+    DWORD pending = 0;
+    FT_GetQueueStatus(local_usb.handle, &pending);
+
+    return pending > 0;
+}
+
+/*==============================
+    device_begin_read
+    Begins reading from the device and validates the dma header
+    Returns the header info value
+==============================*/
+u32 device_begin_read() {
+    ftdi_context_t* cart = &local_usb;
+    char outbuff[4];
+    cart->current_dma_bytes_read = 0;
+
+    // Ensure we have valid data by reading the header
+    FT_Read(cart->handle, &outbuff[0], 4, &cart->bytes_read);
+    cart->current_dma_bytes_read += cart->bytes_read;
+    if (outbuff[0] != 'D' || outbuff[1] != 'M' || outbuff[2] != 'A' || outbuff[3] != '@')
+        terminate("Unexpected DMA header: %c %c %c %c.", outbuff[0], outbuff[1], outbuff[2], outbuff[3]);
+
+    // Get information about the incoming data
+    FT_Read(cart->handle, outbuff, 4, &cart->bytes_read);
+    cart->current_dma_bytes_read += cart->bytes_read;
+    
+    return swap_endian(outbuff[3] << 24 | outbuff[2] << 16 | outbuff[1] << 8 | outbuff[0]);
+}
+
+/*==============================
+    device_end_read
+    Ends a current DMA read by validating completion signal and updating alignment
+    Returns the header info value
+==============================*/
+void device_end_read() {
+    ftdi_context_t* cart = &local_usb;
+    char outbuff[16];
+
+    // Decide the alignment based off the cart that's connected
+    int alignment;
+    switch (cart->carttype)
+    {
+        case CART_EVERDRIVE: alignment = 16; break;
+        case CART_SC64: alignment = 4; break;
+        default: alignment = 0;
+    }
+
+    // Read the completion signal
+    FT_Read(cart->handle, &outbuff[0], 4, &cart->bytes_read);
+    cart->current_dma_bytes_read += cart->bytes_read;
+    if (outbuff[0] != 'C' || outbuff[1] != 'M' || outbuff[2] != 'P' || outbuff[3] != 'H')
+        terminate("Did not receive completion signal: %c %c %c %c.", outbuff[0], outbuff[1], outbuff[2], outbuff[3]);
+
+    // Ensure byte alignment by reading X amount of bytes needed
+    if (alignment != 0 && (cart->current_dma_bytes_read % alignment) != 0)
+    {
+        int left = alignment - (cart->current_dma_bytes_read % alignment);
+        FT_Read(cart->handle, &outbuff[0], left, &cart->bytes_read);
+    }
+}
+
+/*==============================
+    device_read
+    Begins reading from the device and validates the dma header
+    Returns the header info value
+==============================*/
+DWORD device_read(char* buffer, int size) {
+    ftdi_context_t* cart = &local_usb;
+
+    FT_Read(cart->handle, buffer, size, &cart->bytes_read);
+    cart->current_dma_bytes_read += cart->bytes_read;
+
+    return cart->bytes_read;
+}
