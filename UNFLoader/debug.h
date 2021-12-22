@@ -9,6 +9,6 @@
     #define DATATYPE_HEADER     0x03
     #define DATATYPE_SCREENSHOT 0x04
 
-    void debug_main(ftdi_context_t *cart);
+    void debug_main();
 
 #endif

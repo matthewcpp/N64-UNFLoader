@@ -52,6 +52,4 @@
     DWORD device_read(char* buffer, int size);
     void device_end_read();
 
-    ftdi_context_t* device_get_cart();
-
 #endif

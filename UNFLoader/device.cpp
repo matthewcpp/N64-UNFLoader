@@ -40,15 +40,6 @@ static ftdi_context_t local_usb = {0, };
 
 /*==============================
     device_find
-    Returns the cart context
-==============================*/
-ftdi_context_t* device_get_cart() {
-    return &local_usb;
-}
-
-
-/*==============================
-    device_find
     Finds the flashcart plugged in to USB
     @param The cart to check for (CART_NONE for automatic checking)
 ==============================*/

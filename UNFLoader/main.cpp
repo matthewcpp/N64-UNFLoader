@@ -228,7 +228,7 @@ void sendrom(char* rompath)
         // Start Debug Mode
         if (global_debugmode)
         {
-            debug_main(device_get_cart());
+            debug_main();
             escignore = true;
         }
 

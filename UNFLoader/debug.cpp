@@ -31,11 +31,11 @@ Handles USB I/O.
 void debug_textinput(WINDOW* inputwin, char* buffer, u16* cursorpos, int ch);
 void debug_appendfilesend(char* data, u32 size);
 void debug_filesend(const char* filename);
-void debug_decidedata(ftdi_context_t* cart, u32 info, char* buffer, u32* read);
-void debug_handle_text(ftdi_context_t* cart, u32 size, char* buffer, u32* read);
-void debug_handle_rawbinary(ftdi_context_t* cart, u32 size, char* buffer, u32* read);
-void debug_handle_header(ftdi_context_t* cart, u32 size, char* buffer, u32* read);
-void debug_handle_screenshot(ftdi_context_t* cart, u32 size, char* buffer, u32* read);
+void debug_decidedata(u32 info, char* buffer);
+void debug_handle_text(u32 size, char* buffer);
+void debug_handle_rawbinary(u32 size, char* buffer);
+void debug_handle_header(u32 size, char* buffer);
+void debug_handle_screenshot(u32 size, char* buffer);
 
 
 /*********************************
@@ -53,7 +53,7 @@ static int cmd_count = 0;
     @param A pointer to the cart context
 ==============================*/
 
-void debug_main(ftdi_context_t *cart)
+void debug_main()
 {
     int i;
     
@@ -115,7 +115,7 @@ void debug_main(ftdi_context_t *cart)
            info = device_begin_read();
 
             // Decide what to do with the received data
-            debug_decidedata(cart, info, outbuff, &read);
+            debug_decidedata(info, outbuff);
 
             device_end_read();
         }
@@ -486,7 +486,7 @@ void debug_filesend(const char* filename)
     @param A pointer to a variable that stores the number of bytes read
 ==============================*/
 
-void debug_decidedata(ftdi_context_t* cart, u32 info, char* buffer, u32* read)
+void debug_decidedata(u32 info, char* buffer)
 {
     u8 command = (info >> 24) & 0xFF;
     u32 size = info & 0xFFFFFF;
@@ -494,10 +494,10 @@ void debug_decidedata(ftdi_context_t* cart, u32 info, char* buffer, u32* read)
     // Decide what to do with the data based off the command type
     switch (command)
     {
-        case DATATYPE_TEXT:       debug_handle_text(cart, size, buffer, read); break;
-        case DATATYPE_RAWBINARY:  debug_handle_rawbinary(cart, size, buffer, read); break;
-        case DATATYPE_HEADER:     debug_handle_header(cart, size, buffer, read); break;
-        case DATATYPE_SCREENSHOT: debug_handle_screenshot(cart, size, buffer, read); break;
+        case DATATYPE_TEXT:       debug_handle_text(size, buffer); break;
+        case DATATYPE_RAWBINARY:  debug_handle_rawbinary(size, buffer); break;
+        case DATATYPE_HEADER:     debug_handle_header(size, buffer); break;
+        case DATATYPE_SCREENSHOT: debug_handle_screenshot( size, buffer); break;
         default:                  terminate("Unknown data type.");
     }
 }
@@ -506,13 +506,11 @@ void debug_decidedata(ftdi_context_t* cart, u32 info, char* buffer, u32* read)
 /*==============================
     debug_handle_text
     Handles DATATYPE_TEXT
-    @param A pointer to the cart context
     @param The size of the incoming data
     @param The buffer to use
-    @param A pointer to a variable that stores the number of bytes read
 ==============================*/
 
-void debug_handle_text(ftdi_context_t* cart, u32 size, char* buffer, u32* read)
+void debug_handle_text(u32 size, char* buffer)
 {
     int total = 0;
     int left = size;
@@ -525,12 +523,11 @@ void debug_handle_text(ftdi_context_t* cart, u32 size, char* buffer, u32* read)
     while (left != 0)
     {
         // Read from the USB and print it
-        device_read(buffer, left);
-        pdprint("%.*s", CRDEF_PRINT, cart->bytes_read, buffer);
+        int bytes_read = device_read(buffer, left);
+        pdprint("%.*s", CRDEF_PRINT, bytes_read, buffer);
 
         // Store the amount of bytes read
-        (*read) += cart->bytes_read;
-        total += cart->bytes_read;
+        total += bytes_read;
 
         // Ensure the data fits within our buffer
         left = size - total;
@@ -543,13 +540,11 @@ void debug_handle_text(ftdi_context_t* cart, u32 size, char* buffer, u32* read)
 /*==============================
     debug_handle_rawbinary
     Handles DATATYPE_RAWBINARY
-    @param A pointer to the cart context
     @param The size of the incoming data
     @param The buffer to use
-    @param A pointer to a variable that stores the number of bytes read
 ==============================*/
 
-void debug_handle_rawbinary(ftdi_context_t* cart, u32 size, char* buffer, u32* read)
+void debug_handle_rawbinary(u32 size, char* buffer)
 {
     int total = 0;
     int left = size;
@@ -591,12 +586,11 @@ void debug_handle_rawbinary(ftdi_context_t* cart, u32 size, char* buffer, u32* r
     while (left != 0)
     {
         // Read from the USB and save it to our binary file
-        device_read(buffer, left);
+        int bytes_read = device_read(buffer, left);
         fwrite(buffer, 1, left, fp);
 
         // Store the amount of bytes read
-        (*read) += cart->bytes_read;
-        total += cart->bytes_read;
+        total += bytes_read;
 
         // Ensure the data fits within our buffer
         left = size - total;
@@ -615,13 +609,11 @@ void debug_handle_rawbinary(ftdi_context_t* cart, u32 size, char* buffer, u32* r
 /*==============================
     debug_handle_header
     Handles DATATYPE_HEADER
-    @param A pointer to the cart context
     @param The size of the incoming data
     @param The buffer to use
-    @param A pointer to a variable that stores the number of bytes read
 ==============================*/
 
-void debug_handle_header(ftdi_context_t* cart, u32 size, char* buffer, u32* read)
+void debug_handle_header(u32 size, char* buffer)
 {
     int total = 0;
     int left = size;
@@ -634,13 +626,12 @@ void debug_handle_header(ftdi_context_t* cart, u32 size, char* buffer, u32* read
     while (left != 0)
     {
         // Read from the USB and save it to the global headerdata
-        device_read(buffer, left);
-        for (int i=0; i<(int)cart->bytes_read; i+=4)
+        int bytes_read = device_read(buffer, left);
+        for (int i=0; i<(int)bytes_read; i+=4)
             debug_headerdata[i/4] = swap_endian(buffer[i + 3] << 24 | buffer[i + 2] << 16 | buffer[i + 1] << 8 | buffer[i]);
 
         // Store the amount of bytes read
-        (*read) += cart->bytes_read;
-        total += cart->bytes_read;
+        total += bytes_read;
 
         // Ensure the data fits within our buffer
         left = size - total;
@@ -653,13 +644,11 @@ void debug_handle_header(ftdi_context_t* cart, u32 size, char* buffer, u32* read
 /*==============================
     debug_handle_screenshot
     Handles DATATYPE_SCREENSHOT
-    @param A pointer to the cart context
     @param The size of the incoming data
     @param The buffer to use
-    @param A pointer to a variable that stores the number of bytes read
 ==============================*/
 
-void debug_handle_screenshot(ftdi_context_t* cart, u32 size, char* buffer, u32* read)
+void debug_handle_screenshot(u32 size, char* buffer)
 {
     int total = 0;
     int left = size;
@@ -704,8 +693,8 @@ void debug_handle_screenshot(ftdi_context_t* cart, u32 size, char* buffer, u32* 
     while (left != 0)
     {
         // Read from the USB and save it to our binary file
-        device_read(buffer, left);
-        for (int i=0; i<(int)cart->bytes_read; i+=4)
+        int bytes_read = device_read(buffer, left);
+        for (int i=0; i<bytes_read; i+=4)
         {
             int texel = swap_endian((buffer[i+3]<<24)&0xFF000000 | (buffer[i+2]<<16)&0xFF0000 | (buffer[i+1]<<8)&0xFF00 | buffer[i]&0xFF);
             if (debug_headerdata[1] == 2) 
@@ -733,8 +722,7 @@ void debug_handle_screenshot(ftdi_context_t* cart, u32 size, char* buffer, u32* 
         }
 
         // Store the amount of bytes read
-        (*read) += cart->bytes_read;
-        total += cart->bytes_read;
+        total += bytes_read;
 
         // Ensure the data fits within our buffer
         left = size - total;
