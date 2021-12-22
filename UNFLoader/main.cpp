@@ -103,7 +103,9 @@ int main(int argc, char* argv[])
         terminate("Missing ROM argument (-r <ROM NAME HERE>)\n");
 
     device_set_fatal_error_callback(on_device_error);
-    
+    device_set_sendrom_progress_callback(on_sendrom_progress);
+    device_set_senddata_progress_callback(on_senddata_progress);
+
     // Upload the ROM and start debug mode if necessary
     device_find(local_flashcart);
     device_open();
@@ -222,7 +224,10 @@ void sendrom(char* rompath)
             pdprint("ROM is smaller than 1MB, it might not boot properly.\n", CRDEF_PROGRAM);
 
         // Send the ROM
+        time_t upload_time = clock();
         device_sendrom(rompath, &global_sendrom_params);
+        // Print that we've finished
+        pdprint_replace("ROM successfully uploaded in %.2f seconds!\n", CRDEF_PROGRAM, ((double)(clock()-upload_time))/CLOCKS_PER_SEC);
 
         // Close the file pipe and start the timeout
         fclose(file);

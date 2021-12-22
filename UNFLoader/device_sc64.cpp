@@ -119,7 +119,6 @@ void device_sendrom_sc64(ftdi_context_t* cart, FILE* file, u32 size, device_send
     size_t chunk;
     u8* rom_buffer;
     size_t bytes_left;
-    time_t upload_time_start;
     s32 cic;
     s32 tv;
     s32 skip;
@@ -200,13 +199,10 @@ void device_sendrom_sc64(ftdi_context_t* cart, FILE* file, u32 size, device_send
 
     // Init progressbar
     pdprint("\n", CRDEF_PROGRAM);
-    progressbar_draw("Uploading ROM", CRDEF_PROGRAM, 0);
+    sendrom_progress(0);
 
     // Prepare variables
     bytes_left = size;
-
-    // Get start time
-    upload_time_start = clock();
 
     // Prepare cart for write
     device_send_cmd_sc64(cart, DEV_CMD_WRITE, 0, size, false);
@@ -238,7 +234,7 @@ void device_sendrom_sc64(ftdi_context_t* cart, FILE* file, u32 size, device_send
         bytes_left -= cart->bytes_written;
 
         // Update progressbar
-        progressbar_draw("Uploading ROM", CRDEF_PROGRAM, (size - bytes_left) / (float)size);
+        sendrom_progress((size - bytes_left) / (float)size);
     } while (bytes_left > 0);
 
     // Free ROM buffer
@@ -251,10 +247,6 @@ void device_sendrom_sc64(ftdi_context_t* cart, FILE* file, u32 size, device_send
 
     // Check if write was successful
     device_check_reply_sc64(cart, DEV_CMD_WRITE);
-
-    // Print that we've finished
-    double upload_time = (double)(clock() - upload_time_start) / CLOCKS_PER_SEC;
-    pdprint_replace("ROM successfully uploaded in %.2f seconds!\n", CRDEF_PROGRAM, upload_time);
 }
 
 

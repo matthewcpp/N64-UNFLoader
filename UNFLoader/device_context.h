@@ -31,5 +31,7 @@ typedef struct {
 } ftdi_context_t;
 
 void  testcommand(FT_STATUS status, const char* reason, ...);
+void sendrom_progress(float progress);
+void senddata_progress(float progress);
 
 #endif

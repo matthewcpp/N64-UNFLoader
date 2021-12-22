@@ -145,7 +145,6 @@ void device_sendrom_64drive(ftdi_context_t* cart, FILE *file, u32 size, device_s
     int	   bytes_do;
     int	   chunk = 0;
     u8*    rom_buffer = (u8*) malloc(sizeof(u8) * 4*1024*1024);
-    time_t upload_time = clock();
     DWORD  cmps;
 
     // Check we managed to malloc
@@ -257,7 +256,7 @@ void device_sendrom_64drive(ftdi_context_t* cart, FILE *file, u32 size, device_s
 
     // Send chunks to the cart
     pdprint("\n", CRDEF_PROGRAM);
-    progressbar_draw("Uploading ROM", CRDEF_PROGRAM, 0);
+    sendrom_progress(0);
     for ( ; ; )
     {
         int i;
@@ -318,7 +317,7 @@ void device_sendrom_64drive(ftdi_context_t* cart, FILE *file, u32 size, device_s
         ram_addr += bytes_do;
 
         // Draw the progress bar
-        progressbar_draw("Uploading ROM", CRDEF_PROGRAM, (float)bytes_done/size);
+        sendrom_progress((float)bytes_done/size);
     }
 
     // Wait for the CMP signal
@@ -346,8 +345,6 @@ void device_sendrom_64drive(ftdi_context_t* cart, FILE *file, u32 size, device_s
         FT_GetQueueStatus(cart->handle, &cmps);
     }
 
-    // Print that we've finished
-    pdprint_replace("ROM successfully uploaded in %.2f seconds!\n", CRDEF_PROGRAM, ((double)(clock()-upload_time))/CLOCKS_PER_SEC);
     free(rom_buffer);
 }
 
@@ -379,7 +376,7 @@ void device_senddata_64drive(ftdi_context_t* cart, int datatype, char* data, u32
     datacopy = (char*) calloc(newsize, 1);
     memcpy(datacopy, data, size);
     pdprint("\n", CRDEF_PROGRAM);
-    progressbar_draw("Uploading data", CRDEF_INFO, 0.0);
+    senddata_progress(0.0);
 
     // Send this block of data
     device_sendcmd_64drive(cart, DEV_CMD_USBRECV, false, 1, (newsize & 0x00FFFFFF) | datatype << 24, 0);
@@ -392,7 +389,7 @@ void device_senddata_64drive(ftdi_context_t* cart, int datatype, char* data, u32
         terminate("Received wrong CMPlete signal.");
 
     // Draw the progress bar
-    progressbar_draw("Uploading data", CRDEF_INFO, 1.0);
+    senddata_progress(1.0);
 
     // Free used up resources
     free(datacopy);

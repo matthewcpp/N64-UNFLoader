@@ -137,7 +137,6 @@ void device_sendrom_everdrive(ftdi_context_t* cart, FILE *file, u32 size, device
     int	   bytes_do;
     char*  rom_buffer = (char*) malloc(sizeof(int) * 32*1024);
     int    crc_area = 0x100000 + 4096;
-    time_t upload_time = clock();
 
     // Check we managed to malloc
     if (rom_buffer == NULL)
@@ -163,7 +162,7 @@ void device_sendrom_everdrive(ftdi_context_t* cart, FILE *file, u32 size, device
 
     // Initialize the progress bar
     pdprint("\n", CRDEF_PROGRAM);
-    progressbar_draw("Uploading ROM", CRDEF_PROGRAM, 0);
+    sendrom_progress(0);
 
     // Send a command saying we're about to write to the cart
     device_sendcmd_everdrive(cart, 'W', 0x10000000, size, 0);
@@ -236,7 +235,7 @@ void device_sendrom_everdrive(ftdi_context_t* cart, FILE *file, u32 size, device
         bytes_done += bytes_do;
 
         // Draw the progress bar
-        progressbar_draw("Uploading ROM", CRDEF_PROGRAM, (float)bytes_done/size);
+        sendrom_progress((float)bytes_done/size);
     }
 
     // Send the PIFboot command
@@ -272,8 +271,6 @@ void device_sendrom_everdrive(ftdi_context_t* cart, FILE *file, u32 size, device
         FT_Write(cart->handle, filename, 256, &cart->bytes_written);
     }
 
-    // Print that we've finished
-    pdprint_replace("ROM successfully uploaded in %.2f seconds!\n", CRDEF_PROGRAM, ((double)(clock()-upload_time))/CLOCKS_PER_SEC);
     free(rom_buffer);
 }
 
@@ -309,7 +306,7 @@ void device_senddata_everdrive(ftdi_context_t* cart, int datatype, char* data, u
 
     // Upload the data
     pdprint("\n", CRDEF_PROGRAM);
-    progressbar_draw("Uploading data", CRDEF_INFO, 0);
+    senddata_progress(0);
     for ( ; ; )
     {
         int i, block;
@@ -349,7 +346,7 @@ void device_senddata_everdrive(ftdi_context_t* cart, int datatype, char* data, u
             terminate("Everdrive timed out.");
 
         // Draw the progress bar
-        progressbar_draw("Uploading data", CRDEF_INFO, (float)read/size);
+        senddata_progress((float)read/size);
 
         // Keep track of how many bytes were uploaded
         left -= block;

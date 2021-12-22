@@ -37,6 +37,8 @@
     #define pdprint_replace(string, color, ...) __pdprint_replace(color, string, ##__VA_ARGS__)
     void terminate(const char* reason, ...);
     void on_device_error(const char* error);
+    void on_sendrom_progress(float percent);
+    void on_senddata_progress(float percent);
     void progressbar_draw(const char* text, short color, float percent);
 
     // Useful functions
