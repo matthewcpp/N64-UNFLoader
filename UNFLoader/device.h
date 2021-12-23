@@ -9,10 +9,18 @@
     *********************************/
 
     #define CART_NONE      0
+    #define CART_ANY       0
     #define CART_64DRIVE1  1
     #define CART_64DRIVE2  2
     #define CART_EVERDRIVE 3
     #define CART_SC64      4
+
+
+    // Data types defintions
+    #define DATATYPE_TEXT       0x01
+    #define DATATYPE_RAWBINARY  0x02
+    #define DATATYPE_HEADER     0x03
+    #define DATATYPE_SCREENSHOT 0x04
 
 
     /*********************************

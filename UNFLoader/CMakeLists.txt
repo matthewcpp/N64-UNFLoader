@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.10)
 
 project(UNFLoader CXX)
 
@@ -37,3 +37,10 @@ if(WIN32)
 
 	target_link_libraries(UNFLoader PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/Include/pdcurses.lib)
 endif()
+
+add_executable(wstest wstest/main.cpp)
+find_package(websocketpp CONFIG REQUIRED)
+target_include_directories(wstest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(wstest PRIVATE websocketpp::websocketpp lib64device)
+set_property(TARGET wstest PROPERTY CXX_STANDARD 17)
+set_property(TARGET wstest PROPERTY CXX_STANDARD_REQUIRED ON)

@@ -253,6 +253,7 @@ void device_sendrom(const char* rompath, device_sendrom_params_t* params)
     {
         device_close();
         fatal_error("Unable to open file '%s'.\n", rompath);
+        return;
     }
 
     int filesize = 0;
