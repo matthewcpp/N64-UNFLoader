@@ -1,6 +1,8 @@
 #ifndef __DEVICE_HEADER
 #define __DEVICE_HEADER
 
+#include <stdint.h>
+
 
     /*********************************
                   Macros
@@ -25,7 +27,7 @@
 
     typedef struct {
         int cictype;
-        u32 savetype;
+        uint32_t savetype;
         int z64;
     } device_sendrom_params_t;
 
@@ -44,14 +46,14 @@
     void  device_find(int automode);
     void  device_open();
     void  device_sendrom(const char* rompath, device_sendrom_params_t* params);
-    void  device_senddata(int datatype, char* data, u32 size);
+    void  device_senddata(int datatype, char* data, uint32_t size);
     bool  device_isopen();
-    DWORD device_getcarttype();
+    uint32_t device_getcarttype();
     void  device_close();
 
-    DWORD device_get_pending();
-    u32 device_begin_read();
-    DWORD device_read(char* buffer, int size);
+    uint32_t device_get_pending();
+    uint32_t device_begin_read();
+    uint32_t device_read(char* buffer, int size);
     void device_end_read();
 
 #endif

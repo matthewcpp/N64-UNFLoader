@@ -6,8 +6,6 @@ here is courtesy of MarshallH's 64Drive USB tool:
 http://64drive.retroactive.be/support.php
 ***************************************************************/
 
-#include "main.h"
-#include "helper.h"
 #include "device_64drive.h"
 
 

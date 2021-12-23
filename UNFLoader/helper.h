@@ -43,12 +43,7 @@
     void progressbar_draw(const char* text, short color, float percent);
 
     // Useful functions
-    u32   swap_endian(u32 val);
-    u32   calc_padsize(u32 size);
     char* gen_filename();
-    #define SWAP(a, b) (((a) ^= (b)), ((b) ^= (a)), ((a) ^= (b))) // From https://graphics.stanford.edu/~seander/bithacks.html#SwappingValuesXOR
-    u32 romhash(u8 *buff, u32 len);
-    s16 cic_from_hash(u32 hash);
     void handle_timeout();
 
 #endif

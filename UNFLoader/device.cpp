@@ -5,10 +5,8 @@ Passes flashcart communication to more specific functions
 ***************************************************************/
 
 
-#include "main.h"
-#include "device_context.h"
-#include "helper.h"
 #include "device.h"
+#include "device_context.h"
 #include "device_64drive.h"
 #include "device_everdrive.h"
 #include "device_sc64.h"
@@ -263,6 +261,8 @@ void device_sendrom(const char* rompath, device_sendrom_params_t* params)
     filesize = ftell(file);
     fseek(file, 0, SEEK_SET);
 
+    local_usb.current_rompath = rompath;
+
     funcPointer_sendrom(&local_usb, file, filesize, params);
 
     fclose(file);
@@ -302,7 +302,7 @@ bool device_isopen()
     @returns The cart type
 ==============================*/
 
-DWORD device_getcarttype()
+uint32_t device_getcarttype()
 {
     ftdi_context_t* cart = &local_usb;
     return cart->carttype;
@@ -322,7 +322,7 @@ void device_close()
 
     // Close the device
     funcPointer_close(&local_usb);
-    pdprint("USB connection closed.\n", CRDEF_PROGRAM);
+    log_message("USB connection closed.\n");
 }
 
 
@@ -330,7 +330,7 @@ void device_close()
     device_get_pending
     Returns the amount of data in the device queue
 ==============================*/
-DWORD device_get_pending()
+uint32_t device_get_pending()
 {
     DWORD pending = 0;
     FT_GetQueueStatus(local_usb.handle, &pending);
@@ -343,7 +343,7 @@ DWORD device_get_pending()
     Begins reading from the device and validates the dma header
     Returns the header info value
 ==============================*/
-u32 device_begin_read()
+uint32_t device_begin_read()
 {
     ftdi_context_t* cart = &local_usb;
     char outbuff[4];
@@ -385,7 +385,7 @@ void device_end_read()
     FT_Read(cart->handle, &outbuff[0], 4, &cart->bytes_read);
     cart->current_dma_bytes_read += cart->bytes_read;
     if (outbuff[0] != 'C' || outbuff[1] != 'M' || outbuff[2] != 'P' || outbuff[3] != 'H')
-        terminate("Did not receive completion signal: %c %c %c %c.", outbuff[0], outbuff[1], outbuff[2], outbuff[3]);
+        fatal_error("Did not receive completion signal: %c %c %c %c.", outbuff[0], outbuff[1], outbuff[2], outbuff[3]);
 
     // Ensure byte alignment by reading X amount of bytes needed
     if (alignment != 0 && (cart->current_dma_bytes_read % alignment) != 0)
@@ -400,7 +400,7 @@ void device_end_read()
     Begins reading from the device and validates the dma header
     Returns the header info value
 ==============================*/
-DWORD device_read(char* buffer, int size)
+uint32_t device_read(char* buffer, int size)
 {
     ftdi_context_t* cart = &local_usb;
 
@@ -480,4 +480,79 @@ void senddata_progress(float percent) {
     if (senddata_progress_callback) {
         senddata_progress_callback(percent);
     }
+}
+
+/*==============================
+    calc_padsize
+    Returns the correct size a ROM should be. Code taken from:
+    https://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
+    @param The current ROM filesize
+    @returns the correct ROM filesize
+==============================*/
+
+u32 calc_padsize(u32 size)
+{
+    size--;
+    size |= size >> 1;
+    size |= size >> 2;
+    size |= size >> 4;
+    size |= size >> 8;
+    size |= size >> 16;
+    size++;
+    return size;
+}
+
+/*==============================
+    romhash
+    Returns an int with a simple hash of the inputted data
+    @param The data to hash
+    @param The size of the data
+    @returns The hash number
+==============================*/
+
+u32 romhash(u8 *buff, u32 len) 
+{
+    u32 i;
+    u32 hash=0;
+    for (i=0; i<len; i++)
+        hash += buff[i];
+    return hash;
+}
+
+/*==============================
+    cic_from_hash
+    Returns a CIC value from the hash number
+    @param The hash number
+    @returns The global_cictype value
+==============================*/
+
+s16 cic_from_hash(u32 hash)
+{
+    switch (hash)
+    {
+        case 0x033A27: return 0;
+        case 0x034044: return 1;
+        case 0x03421E: return 3;
+        case 0x0357D0: return 4;
+        case 0x047A81: return 5;
+        case 0x0371CC: return 6;
+        case 0x02ABB7: return 7;
+        case 0x04F90E: return 303;
+    }
+    return -1;
+}
+
+/*==============================
+    swap_endian
+    Swaps the endianess of the data
+    @param   The data to swap the endianess of
+    @returns The data with endianess swapped
+==============================*/
+
+u32 swap_endian(u32 val)
+{
+	return ((val<<24) ) | 
+		   ((val<<8)  & 0x00ff0000) |
+		   ((val>>8)  & 0x0000ff00) | 
+		   ((val>>24) );
 }

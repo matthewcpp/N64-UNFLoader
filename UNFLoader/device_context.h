@@ -1,20 +1,7 @@
 #ifndef __DEVICE_CONTEXT_HEADER
 #define __DEVICE_CONTEXT_HEADER
 
-    #pragma warning(push, 0)
-        #include <stdio.h>
-        #include <stdlib.h>
-        #include <string.h>
-        #include <time.h>
-        #include <ctype.h>
-        #ifndef LINUX
-            #include <windows.h> // Needed to prevent a macro redefinition due to curses.h
-        #else
-            #include <unistd.h>
-        #endif
-
-        #include "Include/ftd2xx.h"
-    #pragma warning(pop)
+#include "types.h"
 
 typedef struct {
     DWORD        devices;
@@ -28,6 +15,7 @@ typedef struct {
     DWORD        carttype;
     DWORD        cictype;
     u32          current_dma_bytes_read; // the total amount of bytes read in the current message
+    const char*        current_rompath;
 } ftdi_context_t;
 
 void testcommand(FT_STATUS status, const char* reason, ...);
@@ -35,5 +23,11 @@ void log_message(const char* message, ...);
 void fatal_error(const char* message, ...);
 void sendrom_progress(float progress);
 void senddata_progress(float progress);
+
+u32   swap_endian(u32 val);
+u32   calc_padsize(u32 size);
+#define SWAP(a, b) (((a) ^= (b)), ((b) ^= (a)), ((a) ^= (b))) // From https://graphics.stanford.edu/~seander/bithacks.html#SwappingValuesXOR
+u32 romhash(u8 *buff, u32 len);
+s16 cic_from_hash(u32 hash);
 
 #endif

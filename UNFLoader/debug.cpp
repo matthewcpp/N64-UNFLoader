@@ -9,6 +9,7 @@ Handles USB I/O.
 #include "main.h"
 #include "helper.h"
 #include "device.h"
+#include "device_context.h"
 #include "debug.h"
 
 

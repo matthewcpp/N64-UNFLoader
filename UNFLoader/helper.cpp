@@ -266,22 +266,6 @@ static void terminate_v(const char* reason, va_list args)
 }
 
 
-/*==============================
-    swap_endian
-    Swaps the endianess of the data
-    @param   The data to swap the endianess of
-    @returns The data with endianess swapped
-==============================*/
-
-u32 swap_endian(u32 val)
-{
-	return ((val<<24) ) | 
-		   ((val<<8)  & 0x00ff0000) |
-		   ((val>>8)  & 0x0000ff00) | 
-		   ((val>>24) );
-}
-
-
 void on_sendrom_progress(float percent)
 {
     if (percent == 0.0f)
@@ -325,26 +309,6 @@ void progressbar_draw(const char* text, short color, float percent)
 }
 
 
-/*==============================
-    calc_padsize
-    Returns the correct size a ROM should be. Code taken from:
-    https://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
-    @param The current ROM filesize
-    @returns the correct ROM filesize
-==============================*/
-
-u32 calc_padsize(u32 size)
-{
-    size--;
-    size |= size >> 1;
-    size |= size >> 2;
-    size |= size >> 4;
-    size |= size >> 8;
-    size |= size >> 16;
-    size++;
-    return size;
-}
-
 
 /*==============================
     gen_filename
@@ -383,46 +347,6 @@ char* gen_filename()
     return str;
 }
 
-
-/*==============================
-    romhash
-    Returns an int with a simple hash of the inputted data
-    @param The data to hash
-    @param The size of the data
-    @returns The hash number
-==============================*/
-
-u32 romhash(u8 *buff, u32 len) 
-{
-    u32 i;
-    u32 hash=0;
-    for (i=0; i<len; i++)
-        hash += buff[i];
-    return hash;
-}
-
-/*==============================
-    cic_from_hash
-    Returns a CIC value from the hash number
-    @param The hash number
-    @returns The global_cictype value
-==============================*/
-
-s16 cic_from_hash(u32 hash)
-{
-    switch (hash)
-    {
-        case 0x033A27: return 0;
-        case 0x034044: return 1;
-        case 0x03421E: return 3;
-        case 0x0357D0: return 4;
-        case 0x047A81: return 5;
-        case 0x0371CC: return 6;
-        case 0x02ABB7: return 7;
-        case 0x04F90E: return 303;
-    }
-    return -1;
-}
 
 /*==============================
 handle_timeout

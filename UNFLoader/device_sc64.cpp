@@ -6,8 +6,6 @@ https://github.com/Polprzewodnikowy/SummerCollection
 
 ***************************************************************/
 
-#include "main.h"
-#include "helper.h"
 #include "device_sc64.h"
 
 

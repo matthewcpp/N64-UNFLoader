@@ -2,16 +2,6 @@
 #define __MAIN_HEADER
 
     #pragma warning(push, 0)
-        #include <stdio.h>
-        #include <stdlib.h>
-        #include <string.h>
-        #include <time.h>
-        #include <ctype.h>
-        #ifndef LINUX
-            #include <windows.h> // Needed to prevent a macro redefinition due to curses.h
-        #else
-            #include <unistd.h>
-        #endif
 
         #ifndef LINUX
             #include "Include/curses.h"
@@ -24,6 +14,8 @@
         #include "Include/ftd2xx.h"
     #pragma warning(pop)
 
+    #include "types.h"
+
 
     /*********************************
                   Macros
@@ -35,18 +27,6 @@
     #define CH_ESCAPE    27
     #define CH_ENTER     '\n'
     #define CH_BACKSPACE '\b'
-
-
-    /*********************************
-                 Typedefs
-    *********************************/
-
-    typedef unsigned char  u8;
-    typedef unsigned short u16;
-    typedef unsigned int   u32;
-    typedef char           s8;
-    typedef short          s16;
-    typedef int            s32;
 
 
     /*********************************

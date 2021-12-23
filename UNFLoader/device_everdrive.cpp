@@ -6,8 +6,6 @@ is courtesy of KRIKzz's USB tool:
 http://krikzz.com/pub/support/everdrive-64/x-series/dev/
 ***************************************************************/
 
-#include "main.h"
-#include "helper.h"
 #include "device_everdrive.h"
 
 
@@ -243,22 +241,22 @@ void device_sendrom_everdrive(ftdi_context_t* cart, FILE *file, u32 size, device
     #else
         usleep(500);
     #endif
-    log_message("Sending pifboot\n", CRDEF_PROGRAM);
+    log_message("Sending pifboot\n");
     device_sendcmd_everdrive(cart, 's', 0, 0, 0);
 
     // Write the filename of the save file if necessary
     if (params->savetype != 0)
     {
         u32 i;
-        u32 len = strlen(global_filename);
+        u32 len = strlen(cart->current_rompath);
         int extension = -1;
         char filename[256];
         memset(filename, 0, 256);
         for (i=len; i>0; i--)
         {
-            if (global_filename[i] == '.' && extension == -1)
+            if (cart->current_rompath[i] == '.' && extension == -1)
                 extension = i;
-            if (global_filename[i] == '\\' || global_filename[i] == '/')
+            if (cart->current_rompath[i] == '\\' || cart->current_rompath[i] == '/')
             {
                 i++;
                 break;
@@ -266,7 +264,7 @@ void device_sendrom_everdrive(ftdi_context_t* cart, FILE *file, u32 size, device
         }
         if (extension == -1)
             extension = len;
-        memcpy(filename, global_filename+i, (extension-i));
+        memcpy(filename, cart->current_rompath+i, (extension-i));
         FT_Write(cart->handle, filename, 256, &cart->bytes_written);
     }
 

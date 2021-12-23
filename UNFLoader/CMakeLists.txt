@@ -7,22 +7,22 @@ set(device_lib_sources
 	device_64drive.h device_64drive.cpp
 	device_sc64.h device_sc64.cpp
 	device.h device_context.h device.cpp
-	helper.h helper.cpp
-	helper_internal.h
 )
 
-add_library(lib64device STATIC ${device_lib_sources})
+add_library(lib64device SHARED ${device_lib_sources})
 
-target_include_directories(lib64device PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/Include)
+target_include_directories(lib64device PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/Include)
 
 if(WIN32)
 	target_compile_definitions(lib64device PUBLIC UNFLOADER_CMAKE _CRT_SECURE_NO_WARNINGS)
-	target_link_libraries(lib64device PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/Include/ftd2xx.lib)
+	target_link_libraries(lib64device PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/Include/ftd2xx.lib)
 endif()
 
 set(unf_loader_sources
 	main.h main.cpp
 	debug.h debug.cpp
+	helper.h helper.cpp
+	helper_internal.h
 	Include/lodepng.cpp
 )
 
