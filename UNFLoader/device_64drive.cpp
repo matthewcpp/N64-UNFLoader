@@ -57,7 +57,7 @@ void device_open_64drive(ftdi_context_t* cart)
     // Open the cart
     cart->status = FT_Open(cart->device_index, &cart->handle);
     if (cart->status != FT_OK || !cart->handle)
-        terminate("Unable to open flashcart.");
+        fatal_error("Unable to open flashcart.");
 
     // Reset the cart and set its timeouts
     testcommand(FT_ResetDevice(cart->handle), "Unable to reset flashcart.");
@@ -112,7 +112,7 @@ void device_sendcmd_64drive(ftdi_context_t* cart, u8 command, bool reply, u32 nu
     // Write to the cart
     testcommand(FT_Write(cart->handle, send_buff, 4+(numparams*4), &cart->bytes_written), "Unable to write to 64Drive.");
     if (cart->bytes_written == 0)
-        terminate("No bytes were written to 64Drive.");
+        fatal_error("No bytes were written to 64Drive.");
 
     // If the command expects a response
     if (reply)
@@ -125,7 +125,7 @@ void device_sendcmd_64drive(ftdi_context_t* cart, u8 command, bool reply, u32 nu
         testcommand(FT_Read(cart->handle, recv_buff, 4, &cart->bytes_read), "Unable to read completion signal.");
         recv_buff[1] = command << 24 | 0x504D43;
         if (memcmp(recv_buff, &recv_buff[1], 4) != 0)
-            terminate("Did not receive completion signal.");
+            fatal_error("Did not receive completion signal.");
     }
 }
 
@@ -149,7 +149,7 @@ void device_sendrom_64drive(ftdi_context_t* cart, FILE *file, u32 size, device_s
 
     // Check we managed to malloc
     if (rom_buffer == NULL)
-        terminate("Unable to allocate memory for buffer.");
+        fatal_error("Unable to allocate memory for buffer.");
 
     // Handle CIC
     if (params->cictype == -1)
@@ -158,7 +158,7 @@ void device_sendrom_64drive(ftdi_context_t* cart, FILE *file, u32 size, device_s
         int j;
         u8* bootcode = (u8*)malloc(4032);
         if (bootcode == NULL)
-            terminate("Unable to allocate memory for bootcode buffer.");
+            fatal_error("Unable to allocate memory for bootcode buffer.");
 
         // Read the bootcode and store it
         fseek(file, 0x40, SEEK_SET);
@@ -178,7 +178,7 @@ void device_sendrom_64drive(ftdi_context_t* cart, FILE *file, u32 size, device_s
             cart->cictype = params->cictype;
             device_sendcmd_64drive(cart, DEV_CMD_SETCIC, false, 1, (1 << 31) | cic, 0);
             if (cic == 303)
-                terminate("The 8303 CIC is not supported through USB");
+                fatal_error("The 8303 CIC is not supported through USB");
             const char* cic_str = NULL;
             switch (cic)
             {
@@ -228,8 +228,8 @@ void device_sendrom_64drive(ftdi_context_t* cart, FILE *file, u32 size, device_s
             case 7106: cic = 6; break;
             case 7:
             case 5101: cic = 7; break;
-            case 303: terminate("This CIC is not supported through USB");
-            default: terminate("Unknown CIC type '%d'.", params->cictype);
+            case 303: fatal_error("This CIC is not supported through USB");
+            default: fatal_error("Unknown CIC type '%d'.", params->cictype);
         }
 
         // Set the CIC
@@ -304,7 +304,7 @@ void device_sendrom_64drive(ftdi_context_t* cart, FILE *file, u32 size, device_s
         if (cart->bytes_written == 0)
         {
             free(rom_buffer);
-            terminate("64Drive timed out.");
+            fatal_error("64Drive timed out.");
         }
 
         // Ignore the success response
@@ -333,7 +333,7 @@ void device_sendrom_64drive(ftdi_context_t* cart, FILE *file, u32 size, device_s
         // Read the CMP signal and ensure it's correct
         FT_Read(cart->handle, rom_buffer, 4, &cart->bytes_read);
         if (rom_buffer[0] != 'C' || rom_buffer[1] != 'M' || rom_buffer[2] != 'P' || rom_buffer[3] != 0x20)
-            terminate("Received wrong CMPlete signal: %c %c %c %02x.", rom_buffer[0], rom_buffer[1], rom_buffer[2], rom_buffer[3]);
+            fatal_error("Received wrong CMPlete signal: %c %c %c %02x.", rom_buffer[0], rom_buffer[1], rom_buffer[2], rom_buffer[3]);
 
         // Wait a little bit before reading the next CMP signal
         #ifndef LINUX
@@ -384,7 +384,7 @@ void device_senddata_64drive(ftdi_context_t* cart, int datatype, char* data, u32
     cart->status = FT_Read(cart->handle, buf, 4, &cart->bytes_read);
     cmp_magic = swap_endian(buf[3] << 24 | buf[2] << 16 | buf[1] << 8 | buf[0]);
     if (cmp_magic != 0x434D5040)
-        terminate("Received wrong CMPlete signal.");
+        fatal_error("Received wrong CMPlete signal.");
 
     // Draw the progress bar
     senddata_progress(1.0);

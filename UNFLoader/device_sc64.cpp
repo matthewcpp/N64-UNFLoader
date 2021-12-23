@@ -43,7 +43,7 @@ static void device_send_cmd_sc64(ftdi_context_t* cart, u8 cmd, u32 arg1, u32 arg
     // Send command and parameters
     testcommand(FT_Write(cart->handle, buff, sizeof(buff), &bytes_processed), "Error: Unable to write command to SummerCart64.\n");
     if (bytes_processed != sizeof(buff)) {
-        terminate("Error: Actual bytes written amount is different than desired.\n");
+        fatal_error("Error: Actual bytes written amount is different than desired.\n");
     }
 
     // Check reply if command doesn't require any data
@@ -66,7 +66,7 @@ static void device_check_reply_sc64(ftdi_context_t* cart, u8 cmd) {
 
     testcommand(FT_Read(cart->handle, buff, sizeof(buff), &bytes_processed), "Error: Unable to read completion signal.\n");
     if (bytes_processed != sizeof(buff) || memcmp(buff, "CMP", 3) != 0 || buff[3] != cmd) {
-        terminate("Error: Did not receive completion signal.\n");
+        fatal_error("Error: Did not receive completion signal.\n");
     } 
 }
 
@@ -95,7 +95,7 @@ void device_open_sc64(ftdi_context_t* cart)
     // Open the cart
     cart->status = FT_Open(cart->device_index, &cart->handle);
     if (cart->status != FT_OK || !cart->handle)
-        terminate("Error: Unable to open flashcart.\n");
+        fatal_error("Error: Unable to open flashcart.\n");
 
     // Reset the cart and set its timeouts and latency timer
     testcommand(FT_ResetDevice(cart->handle), "Error: Unable to reset flashcart.\n");
@@ -140,7 +140,7 @@ void device_sendrom_sc64(ftdi_context_t* cart, FILE* file, u32 size, device_send
     // Allocate ROM buffer
     rom_buffer = (u8 *)malloc(chunk * sizeof(u8));
     if (rom_buffer == NULL) {
-        terminate("Error: Unable to allocate memory for buffer.\n");
+        fatal_error("Error: Unable to allocate memory for buffer.\n");
     }
 
     // Set unknown CIC and TV type as default
@@ -175,7 +175,7 @@ void device_sendrom_sc64(ftdi_context_t* cart, FILE* file, u32 size, device_send
             case 5101: cic = 0xAC; tv = 0; break;
             case 8303: cic = 0xDD; tv = 0; break;
             case 1234: skip = 1; break;
-            default: terminate("Unknown or unsupported CIC type '%d'.", params->cictype);
+            default: fatal_error("Unknown or unsupported CIC type '%d'.", params->cictype);
         }
         cart->cictype = params->cictype;
         log_message("CIC set to %d (cic_seed = %d, tv_type = %d, skip = %s).\n", params->cictype, cic, tv, skip ? "yes" : "no");
@@ -241,7 +241,7 @@ void device_sendrom_sc64(ftdi_context_t* cart, FILE* file, u32 size, device_send
 
     if (bytes_left > 0) {
         // Throw error if upload was unsuccessful
-        terminate("Error: SummerCart64 timed out");
+        fatal_error("Error: SummerCart64 timed out");
     }
 
     // Check if write was successful
@@ -273,7 +273,7 @@ void device_senddata_sc64(ftdi_context_t* cart, int datatype, char* data, u32 si
 
     if (cart->bytes_written != transfer_size) {
         // Throw error if transfer was unsuccessful
-        terminate("Error: SummerCart64 timed out");
+        fatal_error("Error: SummerCart64 timed out");
     }
 }
 

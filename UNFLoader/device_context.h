@@ -32,6 +32,7 @@ typedef struct {
 
 void testcommand(FT_STATUS status, const char* reason, ...);
 void log_message(const char* message, ...);
+void fatal_error(const char* message, ...);
 void sendrom_progress(float progress);
 void senddata_progress(float progress);
 

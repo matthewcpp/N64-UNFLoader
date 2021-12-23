@@ -39,7 +39,7 @@ bool device_test_everdrive(ftdi_context_t* cart, int index)
         if (cart->status != FT_OK || !cart->handle)
         {
             free(cart->dev_info);
-            terminate("Could not open device.");
+            fatal_error("Could not open device.");
         }
 
         // Initialize the USB
@@ -71,7 +71,7 @@ void device_open_everdrive(ftdi_context_t* cart)
     // Open the cart
     cart->status = FT_Open(cart->device_index, &cart->handle);
     if (cart->status != FT_OK || !cart->handle)
-        terminate("Unable to open flashcart.");
+        fatal_error("Unable to open flashcart.");
 
     // Reset the cart
     testcommand(FT_ResetDevice(cart->handle), "Unable to reset flashcart.");
@@ -96,7 +96,7 @@ void device_sendcmd_everdrive(ftdi_context_t* cart, char command, int address, i
 
     // Check we managed to malloc
     if (cmd_buffer == NULL)
-        terminate("Unable to allocate memory for buffer.");
+        fatal_error("Unable to allocate memory for buffer.");
 
     // Define the command and send it
     cmd_buffer[0] = 'c';
@@ -140,7 +140,7 @@ void device_sendrom_everdrive(ftdi_context_t* cart, FILE *file, u32 size, device
 
     // Check we managed to malloc
     if (rom_buffer == NULL)
-        terminate("Unable to allocate memory for buffer.");
+        fatal_error("Unable to allocate memory for buffer.");
 
     // Fill memory if the file is too small
     if ((int)size < crc_area)
@@ -227,7 +227,7 @@ void device_sendrom_everdrive(ftdi_context_t* cart, FILE *file, u32 size, device
 
         // Check for a timeout
         if (cart->bytes_written == 0)
-            terminate("Everdrive timed out.");
+            fatal_error("Everdrive timed out.");
 
          // Keep track of how many bytes were uploaded
         bytes_left -= bytes_do;
@@ -341,7 +341,7 @@ void device_senddata_everdrive(ftdi_context_t* cart, int datatype, char* data, u
 
         // Check for a timeout
         if (cart->bytes_written == 0)
-            terminate("Everdrive timed out.");
+            fatal_error("Everdrive timed out.");
 
         // Draw the progress bar
         senddata_progress((float)read/size);
