@@ -78,12 +78,12 @@ void device_find(int automode)
 
     // Initialize FTD
     if (automode == CART_NONE)
-        pdprint("Attempting flashcart autodetection.\n", CRDEF_PROGRAM);
+        log_message("Attempting flashcart autodetection.\n");
     testcommand(FT_CreateDeviceInfoList(&cart->devices), "USB Device not ready.");
 
     // Check if the device exists
     if (cart->devices == 0)
-        terminate("No devices found.");
+        fatal_error("No devices found.");
 
     // Allocate storage and get device info list
     cart->dev_info = (FT_DEVICE_LIST_INFO_NODE*) malloc(sizeof(FT_DEVICE_LIST_INFO_NODE)*cart->devices);
@@ -97,7 +97,7 @@ void device_find(int automode)
         {
             device_set_64drive1(cart, i);
             if (automode == CART_NONE) 
-                pdprint_replace("64Drive HW1 autodetected!\n", CRDEF_PROGRAM);
+                log_message("64Drive HW1 autodetected!\n");
             break;
         }
 
@@ -106,7 +106,7 @@ void device_find(int automode)
         {
             device_set_64drive2(cart, i);
             if (automode == CART_NONE) 
-                pdprint_replace("64Drive HW2 autodetected!\n", CRDEF_PROGRAM);
+                log_message("64Drive HW2 autodetected!\n");
             break;
         }
 
@@ -115,7 +115,7 @@ void device_find(int automode)
         {
             device_set_everdrive(cart, i);
             if (automode == CART_NONE)
-                pdprint_replace("EverDrive autodetected!\n", CRDEF_PROGRAM);
+                log_message("EverDrive autodetected!\n");
             break;
         }
 
@@ -124,7 +124,7 @@ void device_find(int automode)
         {
             device_set_sc64(cart, i);
             if (automode == CART_NONE)
-                pdprint_replace("SummerCart64 autodetected!\n", CRDEF_PROGRAM);
+                log_message("SummerCart64 autodetected!\n");
             break;
         }
     }
@@ -136,13 +136,13 @@ void device_find(int automode)
         if (automode == CART_NONE)
         {
             #ifdef LINUX
-                terminate("No flashcart detected. Are you running sudo?");
+                fatal_error("No flashcart detected. Are you running sudo?");
             #else
-                terminate("No flashcart detected.");
+                fatal_error("No flashcart detected.");
             #endif
         }
         else
-            terminate("Requested flashcart not found.");
+            fatal_error("Requested flashcart not found.");
     }
 }
 
@@ -237,7 +237,7 @@ void device_set_sc64(ftdi_context_t* cart, int index)
 void device_open()
 {
     funcPointer_open(&local_usb);
-    pdprint("USB connection opened.\n", CRDEF_PROGRAM);
+    log_message("USB connection opened.\n");
 }
 
 
@@ -254,7 +254,7 @@ void device_sendrom(const char* rompath, device_sendrom_params_t* params)
     if (file == NULL)
     {
         device_close();
-        terminate("Unable to open file '%s'.\n", rompath);
+        fatal_error("Unable to open file '%s'.\n", rompath);
     }
 
     int filesize = 0;
@@ -353,7 +353,7 @@ u32 device_begin_read()
     FT_Read(cart->handle, &outbuff[0], 4, &cart->bytes_read);
     cart->current_dma_bytes_read += cart->bytes_read;
     if (outbuff[0] != 'D' || outbuff[1] != 'M' || outbuff[2] != 'A' || outbuff[3] != '@')
-        terminate("Unexpected DMA header: %c %c %c %c.", outbuff[0], outbuff[1], outbuff[2], outbuff[3]);
+        fatal_error("Unexpected DMA header: %c %c %c %c.", outbuff[0], outbuff[1], outbuff[2], outbuff[3]);
 
     // Get information about the incoming data
     FT_Read(cart->handle, outbuff, 4, &cart->bytes_read);
@@ -431,6 +431,19 @@ void testcommand(FT_STATUS status, const char* reason, ...)
         return;
 
     char buffer[512];
+
+    va_list args;
+    va_start(args, reason);
+
+    vsprintf_s(&buffer[0], 512, reason, args);
+    fatal_error_callback(&buffer[0]);
+        
+    va_end(args);
+}
+
+void fatal_error(const char* reason, ...)
+{
+        char buffer[512];
 
     va_list args;
     va_start(args, reason);
