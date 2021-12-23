@@ -606,6 +606,14 @@ void debug_handle_rawbinary(u32 size, char* buffer)
     free(extraname);
 }
 
+static u32 swap_endian_temp(u32 val)
+{
+	return ((val<<24) ) | 
+		   ((val<<8)  & 0x00ff0000) |
+		   ((val>>8)  & 0x0000ff00) | 
+		   ((val>>24) );
+}
+
 
 /*==============================
     debug_handle_header
@@ -629,7 +637,7 @@ void debug_handle_header(u32 size, char* buffer)
         // Read from the USB and save it to the global headerdata
         int bytes_read = device_read(buffer, left);
         for (int i=0; i<(int)bytes_read; i+=4)
-            debug_headerdata[i/4] = swap_endian(buffer[i + 3] << 24 | buffer[i + 2] << 16 | buffer[i + 1] << 8 | buffer[i]);
+            debug_headerdata[i/4] = swap_endian_temp(buffer[i + 3] << 24 | buffer[i + 2] << 16 | buffer[i + 1] << 8 | buffer[i]);
 
         // Store the amount of bytes read
         total += bytes_read;
@@ -697,7 +705,7 @@ void debug_handle_screenshot(u32 size, char* buffer)
         int bytes_read = device_read(buffer, left);
         for (int i=0; i<bytes_read; i+=4)
         {
-            int texel = swap_endian((buffer[i+3]<<24)&0xFF000000 | (buffer[i+2]<<16)&0xFF0000 | (buffer[i+1]<<8)&0xFF00 | buffer[i]&0xFF);
+            int texel = swap_endian_temp((buffer[i+3]<<24)&0xFF000000 | (buffer[i+2]<<16)&0xFF0000 | (buffer[i+1]<<8)&0xFF00 | buffer[i]&0xFF);
             if (debug_headerdata[1] == 2) 
             {
                 short pixel1 = (texel&0xFFFF0000)>>16;

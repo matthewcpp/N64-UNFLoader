@@ -38,22 +38,43 @@
             Function Prototypes
     *********************************/
 
-    void  device_sendrom_params_init(device_sendrom_params_t* params);
-    void  device_set_fatal_error_callback(device_message_callback_t callback);
-    void  device_set_sendrom_progress_callback(device_transfer_progress_callback_t callback);
-    void  device_set_senddata_progress_callback(device_transfer_progress_callback_t callback);
-    void  device_set_message_callback(device_message_callback_t callback);
-    void  device_find(int automode);
-    void  device_open();
-    void  device_sendrom(const char* rompath, device_sendrom_params_t* params);
-    void  device_senddata(int datatype, char* data, uint32_t size);
-    bool  device_isopen();
-    uint32_t device_getcarttype();
-    void  device_close();
+#ifdef SHARED_DEVICE_LIB
+    #ifdef BUILD_SHARED_DEVICE_LIB
+        #define N64_DEVICE_API __declspec(dllexport)
+        #else
+        #define N64_DEVICE_API __declspec(dllimport)
+    #endif
+#else
+    #define N64_DEVICE_API
+#endif
 
-    uint32_t device_get_pending();
-    uint32_t device_begin_read();
-    uint32_t device_read(char* buffer, int size);
-    void device_end_read();
+
+   
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+    void N64_DEVICE_API device_sendrom_params_init(device_sendrom_params_t* params);
+    void N64_DEVICE_API device_set_fatal_error_callback(device_message_callback_t callback);
+    void N64_DEVICE_API device_set_sendrom_progress_callback(device_transfer_progress_callback_t callback);
+    void N64_DEVICE_API device_set_senddata_progress_callback(device_transfer_progress_callback_t callback);
+    void N64_DEVICE_API device_set_message_callback(device_message_callback_t callback);
+    void N64_DEVICE_API device_find(int automode);
+    void N64_DEVICE_API device_open();
+    void N64_DEVICE_API device_sendrom(const char* rompath, device_sendrom_params_t* params);
+    void N64_DEVICE_API device_senddata(int datatype, char* data, uint32_t size);
+    bool N64_DEVICE_API device_isopen();
+    uint32_t N64_DEVICE_API device_getcarttype();
+    void N64_DEVICE_API device_close();
+
+    uint32_t N64_DEVICE_API device_get_pending();
+    uint32_t N64_DEVICE_API device_begin_read();
+    uint32_t N64_DEVICE_API device_read(char* buffer, int size);
+    void N64_DEVICE_API device_end_read();
+
+    
+#ifdef __cplusplus
+}
+#endif
 
 #endif

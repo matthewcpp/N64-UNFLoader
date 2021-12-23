@@ -14,7 +14,10 @@ add_library(lib64device SHARED ${device_lib_sources})
 target_include_directories(lib64device PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/Include)
 
 if(WIN32)
-	target_compile_definitions(lib64device PUBLIC UNFLOADER_CMAKE _CRT_SECURE_NO_WARNINGS)
+	target_compile_definitions(lib64device 
+		PUBLIC UNFLOADER_CMAKE SHARED_DEVICE_LIB _CRT_SECURE_NO_WARNINGS
+		PRIVATE BUILD_SHARED_DEVICE_LIB
+	)
 	target_link_libraries(lib64device PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/Include/ftd2xx.lib)
 endif()
 
