@@ -5,11 +5,22 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(Windows) Launch",
+            "name": "Debug UNF Loader",
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/Debug/UNFLoader.exe",
             "args": ["-d", "-r", "D:/development/repos/framework64/build_n64/bin/data_link.z64"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/Debug/",
+            "environment": [],
+            "console": "externalTerminal"
+        },
+        {
+            "name": "Debug SDL Test",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/Debug/sdltest.exe",
+            "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/build/Debug/",
             "environment": [],

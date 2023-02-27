@@ -44,3 +44,13 @@ target_include_directories(wstest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(wstest PRIVATE websocketpp::websocketpp lib64device)
 set_property(TARGET wstest PROPERTY CXX_STANDARD 17)
 set_property(TARGET wstest PROPERTY CXX_STANDARD_REQUIRED ON)
+
+add_executable(sdltest sdltest/main.cpp)
+find_package(SDL2 CONFIG REQUIRED)
+target_link_libraries(sdltest PUBLIC SDL2::SDL2 SDL2::SDL2main lib64device)
+
+add_executable(assettest assettest/main.cpp)
+target_include_directories(assettest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(assettest PRIVATE lib64device)
+set_property(TARGET assettest PROPERTY CXX_STANDARD 17)
+set_property(TARGET assettest PROPERTY CXX_STANDARD_REQUIRED ON)

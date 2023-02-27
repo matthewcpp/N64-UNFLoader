@@ -10,6 +10,8 @@
 #include <queue>
 #include <string>
 
+server websocket_server;
+
 std::queue<std::string> message_queue;
 std::mutex queue_mutex;
 
@@ -24,8 +26,6 @@ void on_message(websocketpp::connection_hdl, server::message_ptr msg) {
 }
 
 void server_thread_main() {
-    server websocket_server;
-
     websocket_server.set_message_handler(&on_message);
     websocket_server.set_access_channels(websocketpp::log::alevel::all);
     websocket_server.set_error_channels(websocketpp::log::elevel::all);
