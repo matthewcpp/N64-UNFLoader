@@ -9,7 +9,8 @@
 #include <thread>
 
 std::string rom_path = "D:/development/repos/framework64/build_n64/bin/data_link.z64";
-
+bool waiting_for_data_awk = false;
+uint32_t bytes_awk = 0;
 void on_device_error(const char* error) {
     std::cout << "Fatal Error: " << error;
 }
@@ -35,8 +36,19 @@ void process_incomming_messages() {
         device_read(buf.data(), size);
         device_end_read();
 
-        std::string message(buf.data(), size);
-        std::cout << "N64: " << message << std::endl;
+        if (command == DATATYPE_TEXT){
+            std::string message(buf.data(), size);
+            std::cout << "N64: " << message << std::endl;
+        }
+        else if (command == 3) {
+            waiting_for_data_awk = false;
+            uint32_t big_endian;
+            std::memcpy(&big_endian, buf.data(), sizeof(uint32_t));
+
+            uint32_t little_endian = _byteswap_ulong(big_endian);
+            bytes_awk += little_endian;
+        }
+
     }
 }
 
@@ -55,25 +67,53 @@ struct BeginMessage {
     }
 };
 
+#define DATA_MESSAGE_SIZE 1064
+#define DATA_MESSAGE_PAYLOAD_SIZE (DATA_MESSAGE_SIZE - sizeof(uint32_t))
 struct DataMessage {
-    char payload[2048];
+    uint32_t payload_size;
+    char payload[DATA_MESSAGE_PAYLOAD_SIZE];
 };
 
 void send_file(std::string const & path_str) {
     std::filesystem::path asset_path = path_str;
 
-        auto file_name = asset_path.filename().string();
-        auto file_size = static_cast<size_t>(std::filesystem::file_size(asset_path));
+    auto file_name = asset_path.filename().string();
+    auto file_size = static_cast<size_t>(std::filesystem::file_size(asset_path));
 
-        std::ifstream file(asset_path, std::ios::binary);
+    std::cout << "BeginMessage: " << sizeof(BeginMessage) << " DataMessage: " << sizeof(DataMessage) << std::endl;
+    std::cout << "Writing " << file_name << " (" << file_size << " bytes) to N64" << std::endl;
 
-        
-        BeginMessage begin_message (file_name, file_size);
+    std::ifstream file(asset_path, std::ios::binary);
 
-        //std::cout << "Sending " << file_size << " bytes to N64" << std::endl;
-        process_incomming_messages();
-        device_senddata(DATATYPE_TEXT, reinterpret_cast<char*>(&begin_message), sizeof(BeginMessage));
-        //device_senddata(DATATYPE_TEXT, "Hello World", strlen("Hello World"));
+    BeginMessage begin_message (file_name, file_size);
+    DataMessage data_message;
+
+    process_incomming_messages();
+    
+    device_senddata(1, reinterpret_cast<char*>(&begin_message), sizeof(BeginMessage));
+
+    bytes_awk = 0;
+    size_t data_sent = 0;
+    while (data_sent < file_size) {
+        size_t data_remaining = file_size - data_sent;
+        size_t amount_to_send = data_remaining > DATA_MESSAGE_PAYLOAD_SIZE ? DATA_MESSAGE_PAYLOAD_SIZE : data_remaining;
+        data_sent += amount_to_send;
+
+        data_message.payload_size = _byteswap_ulong(amount_to_send);
+        file.read(&data_message.payload[0], amount_to_send);
+
+        waiting_for_data_awk = true;
+        device_senddata(2, reinterpret_cast<char*>(&data_message), sizeof(DataMessage));
+
+#if 0
+        while (waiting_for_data_awk) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            process_incomming_messages();
+        }
+#endif
+    }
+
+    std::cout << "Transfer Complete" << std::endl;
 }
 
 int main(int argc, char** argv) {
@@ -96,17 +136,16 @@ int main(int argc, char** argv) {
         std::getline(std::cin, asset_path_str);
 
         if (asset_path_str == ".exit")
-            break;
+            break;        
 
-        std::string file_path = "D:/development/repos/framework64/build_n64/bin/data_link/assets/controller_cube.mesh";
-        send_file(file_path);
-
-/*
         if (!std::filesystem::exists(asset_path_str)) {
             std::cout << "invalid path specified." << std::endl;
             continue;
         }
-*/
+
+        // std::string file_path = "D:/development/repos/framework64/build_n64/bin/data_link/assets/controller_cube.mesh";
+
+        send_file(asset_path_str);
     }
 
 
