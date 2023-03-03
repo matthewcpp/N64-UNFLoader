@@ -56,7 +56,10 @@ endif()
 find_package(tiny-process-library CONFIG REQUIRED)
 find_package(stduuid CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
-find_package(unofficial-restbed CONFIG REQUIRED)
+
+find_package(unofficial-http-parser CONFIG REQUIRED)
+find_package(fmt CONFIG REQUIRED)
+find_package(restinio CONFIG REQUIRED)
 
 add_executable(assettest assettest/main.cpp)
 target_include_directories(assettest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -65,7 +68,7 @@ target_link_libraries(assettest PRIVATE
 	tiny-process-library::tiny-process-library 
 	stduuid 
 	nlohmann_json::nlohmann_json
-	unofficial::restbed::restbed-shared)
+	restinio::restinio)
 
 
 set_property(TARGET assettest PROPERTY CXX_STANDARD 17)

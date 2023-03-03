@@ -4,9 +4,12 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <vector>
 #include <thread>
+
+#include <restinio/all.hpp>
 
 #include "process.hpp"
 #include <uuid.h>
@@ -85,40 +88,6 @@ struct DataMessage {
     char payload[DATA_MESSAGE_PAYLOAD_SIZE];
 };
 
-void send_file(std::string const & path_str) {
-    std::filesystem::path asset_path = path_str;
-
-    auto file_name = asset_path.filename().string();
-    auto file_size = static_cast<size_t>(std::filesystem::file_size(asset_path));
-
-    std::cout << "BeginMessage: " << sizeof(BeginMessage) << " DataMessage: " << sizeof(DataMessage) << std::endl;
-    std::cout << "Writing " << file_name << " (" << file_size << " bytes) to N64" << std::endl;
-
-    std::ifstream file(asset_path, std::ios::binary);
-
-    BeginMessage begin_message (file_name, file_size);
-    DataMessage data_message;
-
-    process_incomming_messages();
-    
-    device_senddata(1, reinterpret_cast<char*>(&begin_message), sizeof(BeginMessage));
-
-    size_t data_sent = 0;
-    while (data_sent < file_size) {
-        size_t data_remaining = file_size - data_sent;
-        size_t amount_to_send = data_remaining > DATA_MESSAGE_PAYLOAD_SIZE ? DATA_MESSAGE_PAYLOAD_SIZE : data_remaining;
-        data_sent += amount_to_send;
-
-        data_message.payload_size = _byteswap_ulong(amount_to_send);
-        file.read(&data_message.payload[0], amount_to_send);
-
-        device_senddata(2, reinterpret_cast<char*>(&data_message), sizeof(DataMessage));
-
-    }
-
-    std::cout << "Transfer Complete" << std::endl;
-}
-
 int main(int argc, char** argv) {
     auto uuid_generator = init_uuid();
     pipeline_script_path = (fw64_directory / "scripts" / "RunPipeline.js").string();
@@ -134,47 +103,37 @@ int main(int argc, char** argv) {
     std::cout << "ROM Uploaded to device" << std::endl;
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-#if 0
-    //process_incomming_messages();
-    std::string asset_path_str;
 
-    for (;;) {
-        std::cout << "Enter asset path:" << std::endl;
-        std::getline(std::cin, asset_path_str);
+using namespace restinio;
+    auto router = std::make_unique<router::express_router_t<>>();
+    router->http_post(
+            "/display_mesh",
+            [&uuid_generator](auto req, auto params) {
+                json req_json = json::parse(req->body());
+                auto const & file_path = req_json["file"].get<std::string>();
+                std::cout << "Processing Mesh: " << file_path;
+                uuids::uuid id = uuid_generator();
+                auto result = process_file(file_path, uuids::to_string(id));
+                return req->create_response()
+                        .set_body(file_path)
+                        .done();
+            });
 
-        if (asset_path_str == ".exit")
-            break;        
+    router->non_matched_request_handler(
+            [](auto req){
+                return req->create_response(restinio::status_not_found()).connection_close().done();
+            });
 
-        if (!std::filesystem::exists(asset_path_str)) {
-            std::cout << "invalid path specified." << std::endl;
-            continue;
-        }
+    // Launching a server with custom traits.
+    struct my_server_traits : public default_single_thread_traits_t {
+        using request_handler_t = restinio::router::express_router_t<>;
+    };
 
-        // std::string file_path = "D:/development/repos/framework64/build_n64/bin/data_link/assets/controller_cube.mesh";
-
-        //send_file(asset_path_str);
-        uuids::uuid id = uuid_generator();
-        auto result = process_file(asset_path_str, uuids::to_string(id));
-        if (!result) {
-            std::cout << "failed to process file" << std::endl;
-        }
-    }
-#endif
-
-for (;;) {
-        if (std::filesystem::exists(incomming_file_path)) {
-        uuids::uuid id = uuid_generator();
-        auto result = process_file(incomming_file_path.string(), uuids::to_string(id));
-        if (!result) {
-            std::cout << "failed to process file" << std::endl;
-        }
-
-        std::filesystem::remove(incomming_file_path);
-    }
-
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-}
-
+    restinio::run(
+            restinio::on_this_thread<my_server_traits>()
+                    .address("localhost")
+                    .port(8080)
+                    .request_handler(std::move(router)));
 
     return 0;
 }
@@ -229,6 +188,40 @@ std::string convert_file(std::filesystem::path const & path, std::filesystem::pa
     std::filesystem::path converted_file_path = scratch_dir / converted_file_name;
 
     return converted_file_path.string();
+}
+
+void send_file(std::string const & path_str) {
+    std::filesystem::path asset_path = path_str;
+
+    auto file_name = asset_path.filename().string();
+    auto file_size = static_cast<size_t>(std::filesystem::file_size(asset_path));
+
+    std::cout << "BeginMessage: " << sizeof(BeginMessage) << " DataMessage: " << sizeof(DataMessage) << std::endl;
+    std::cout << "Writing " << file_name << " (" << file_size << " bytes) to N64" << std::endl;
+
+    std::ifstream file(asset_path, std::ios::binary);
+
+    BeginMessage begin_message (file_name, file_size);
+    DataMessage data_message;
+
+    process_incomming_messages();
+    
+    device_senddata(1, reinterpret_cast<char*>(&begin_message), sizeof(BeginMessage));
+
+    size_t data_sent = 0;
+    while (data_sent < file_size) {
+        size_t data_remaining = file_size - data_sent;
+        size_t amount_to_send = data_remaining > DATA_MESSAGE_PAYLOAD_SIZE ? DATA_MESSAGE_PAYLOAD_SIZE : data_remaining;
+        data_sent += amount_to_send;
+
+        data_message.payload_size = _byteswap_ulong(amount_to_send);
+        file.read(&data_message.payload[0], amount_to_send);
+
+        device_senddata(2, reinterpret_cast<char*>(&data_message), sizeof(DataMessage));
+
+    }
+
+    std::cout << "Transfer Complete" << std::endl;
 }
 
 bool process_file(std::string const & file , std::string const & uuid) {
