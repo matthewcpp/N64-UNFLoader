@@ -38,19 +38,35 @@ if(WIN32)
 	target_link_libraries(UNFLoader PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/Include/pdcurses.lib)
 endif()
 
-add_executable(wstest wstest/main.cpp)
-find_package(websocketpp CONFIG REQUIRED)
-target_include_directories(wstest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(wstest PRIVATE websocketpp::websocketpp lib64device)
-set_property(TARGET wstest PROPERTY CXX_STANDARD 17)
-set_property(TARGET wstest PROPERTY CXX_STANDARD_REQUIRED ON)
+# Dependencies:
+# "sdl2",
+# "websocketpp"
 
-add_executable(sdltest sdltest/main.cpp)
-find_package(SDL2 CONFIG REQUIRED)
-target_link_libraries(sdltest PUBLIC SDL2::SDL2 SDL2::SDL2main lib64device)
+#add_executable(wstest wstest/main.cpp)
+#find_package(websocketpp CONFIG REQUIRED)
+#target_include_directories(wstest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+#target_link_libraries(wstest PRIVATE websocketpp::websocketpp lib64device)
+#set_property(TARGET wstest PROPERTY CXX_STANDARD 17)
+#set_property(TARGET wstest PROPERTY CXX_STANDARD_REQUIRED ON)
+
+#add_executable(sdltest sdltest/main.cpp)
+#find_package(SDL2 CONFIG REQUIRED)
+#target_link_libraries(sdltest PUBLIC SDL2::SDL2 SDL2::SDL2main lib64device)
+
+find_package(tiny-process-library CONFIG REQUIRED)
+find_package(stduuid CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(unofficial-restbed CONFIG REQUIRED)
 
 add_executable(assettest assettest/main.cpp)
 target_include_directories(assettest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(assettest PRIVATE lib64device)
+target_link_libraries(assettest PRIVATE 
+	lib64device 
+	tiny-process-library::tiny-process-library 
+	stduuid 
+	nlohmann_json::nlohmann_json
+	unofficial::restbed::restbed-shared)
+
+
 set_property(TARGET assettest PROPERTY CXX_STANDARD 17)
 set_property(TARGET assettest PROPERTY CXX_STANDARD_REQUIRED ON)

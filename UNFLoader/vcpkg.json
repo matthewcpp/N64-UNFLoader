@@ -2,7 +2,9 @@
     "name": "websockets-test",
     "version": "0.1.0",
     "dependencies": [
-      "websocketpp",
-      "sdl2"
+      "nlohmann-json",
+      "restbed",
+      "stduuid",
+      "tiny-process-library"
     ]
   }
