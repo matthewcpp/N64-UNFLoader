@@ -11,7 +11,7 @@ public:
     bool initialize(std::string const & rom_path);
 
 public:
-    virtual bool sendMessage(uint8_t header, void* data, size_t size) override;
+    virtual bool transferStaticMesh(std::string const & path) override;
     virtual const char* identifier() const override;
 
 private:

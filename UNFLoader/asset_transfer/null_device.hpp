@@ -9,10 +9,10 @@ namespace framework64::asset_transfer {
 
 class NullDevice : DeviceInterface {
 public:
-    size_t send_message_time_milliseconds = 16;
+    size_t transfer_time_miliseconds = 1000;
 
-    virtual bool sendMessage(uint8_t header, void* data, size_t size) override {
-        std::this_thread::sleep_for(std::chrono::milliseconds(send_message_time_milliseconds));
+    virtual bool transferStaticMesh(std::string const & path) override {
+        std::this_thread::sleep_for(std::chrono::milliseconds(transfer_time_miliseconds));
     }
 
     const char* identifier() const override {

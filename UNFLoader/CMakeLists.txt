@@ -64,9 +64,13 @@ find_package(restinio CONFIG REQUIRED)
 set(asset_transfer_sources
 	asset_transfer/converter.hpp asset_transfer/converter.cpp
 	asset_transfer/device_interface.hpp
+	asset_transfer/device_messages.hpp
 	asset_transfer/n64_device.hpp asset_transfer/n64_device.cpp
 	asset_transfer/null_device.hpp
 	asset_transfer/main.cpp
+	asset_transfer/processor.hpp asset_transfer/processor.cpp
+	asset_transfer/settings.hpp asset_transfer/settings.cpp
+	asset_transfer/web_service.hpp asset_transfer/web_service.cpp
 )
 
 add_executable(asset_transfer ${asset_transfer_sources})
