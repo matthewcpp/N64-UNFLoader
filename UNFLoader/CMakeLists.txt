@@ -61,9 +61,17 @@ find_package(unofficial-http-parser CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(restinio CONFIG REQUIRED)
 
-add_executable(assettest assettest/main.cpp)
-target_include_directories(assettest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(assettest PRIVATE 
+set(asset_transfer_sources
+	asset_transfer/converter.hpp asset_transfer/converter.cpp
+	asset_transfer/device_interface.hpp
+	asset_transfer/n64_device.hpp asset_transfer/n64_device.cpp
+	asset_transfer/null_device.hpp
+	asset_transfer/main.cpp
+)
+
+add_executable(asset_transfer ${asset_transfer_sources})
+target_include_directories(asset_transfer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(asset_transfer PRIVATE 
 	lib64device 
 	tiny-process-library::tiny-process-library 
 	stduuid 
@@ -71,5 +79,5 @@ target_link_libraries(assettest PRIVATE
 	restinio::restinio)
 
 
-set_property(TARGET assettest PROPERTY CXX_STANDARD 17)
-set_property(TARGET assettest PROPERTY CXX_STANDARD_REQUIRED ON)
+set_property(TARGET asset_transfer PROPERTY CXX_STANDARD 17)
+set_property(TARGET asset_transfer PROPERTY CXX_STANDARD_REQUIRED ON)

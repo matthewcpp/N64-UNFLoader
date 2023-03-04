@@ -16,6 +16,9 @@
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
+#include "n64_device.hpp"
+#include "null_device.hpp"
+
 std::string rom_path = "D:/development/repos/framework64/build_n64/bin/data_link.z64";
 std::filesystem::path fw64_directory = "D:/development/repos/framework64/";
 std::filesystem::path working_dir = "D:/temp/fw64_convert";
@@ -26,45 +29,6 @@ std::filesystem::path incomming_file_path = "D:/temp/fw64_incomming/mesh.gltf";
 void send_file(std::string const & path_str);
 uuids::uuid_random_generator init_uuid();
 bool process_file(std::string const & path , std::string const & uuid);
-
-void on_device_error(const char* error) {
-    std::cout << "Fatal Error: " << error;
-}
-
-void on_sendrom(float percent) {
-    if (percent == 1.0f) {
-        std::cout << "Rom Uploaded.  Type .exit to terminate program." << std::endl;
-    }
-}
-
-void on_device_message(const char* message) {
-    std::cout << "Device message:" << message;
-}
-
-void process_incomming_messages() {
-    while (device_get_pending()) {
-        uint32_t info = device_begin_read();
-
-        uint8_t command = (info >> 24) & 0xFF;
-        uint32_t size = info & 0xFFFFFF;
-        
-        std::vector<char> buf(size, 0);
-        device_read(buf.data(), size);
-        device_end_read();
-
-        if (command == DATATYPE_TEXT){
-            std::string message(buf.data(), size);
-            std::cout << "N64: " << message << std::endl;
-        }
-        else if (command == 3) {
-            uint32_t big_endian;
-            std::memcpy(&big_endian, buf.data(), sizeof(uint32_t));
-
-            uint32_t little_endian = _byteswap_ulong(big_endian);
-        }
-
-    }
-}
 
 //TODO: add additional swapping intrinsics : https://stackoverflow.com/questions/105252/how-do-i-convert-between-big-endian-and-little-endian-values-in-c
 
@@ -92,16 +56,12 @@ int main(int argc, char** argv) {
     auto uuid_generator = init_uuid();
     pipeline_script_path = (fw64_directory / "scripts" / "RunPipeline.js").string();
 
-    device_sendrom_params_t sendrom_params;
-    device_sendrom_params_init(&sendrom_params);
-    device_set_fatal_error_callback(on_device_error);
-    device_set_message_callback(on_device_message);
-    device_set_sendrom_progress_callback(on_sendrom);
-    device_find(CART_ANY);
-    device_open();
-    device_sendrom(rom_path.c_str(), &sendrom_params);
-    std::cout << "ROM Uploaded to device" << std::endl;
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+#if 1
+    framework64::asset_transfer::N64Device device;
+    device.initialize(rom_path);
+#else
+    framework64::asset_transfer::NullDevice device;
+#endif
 
 
 using namespace restinio;
@@ -203,8 +163,6 @@ void send_file(std::string const & path_str) {
 
     BeginMessage begin_message (file_name, file_size);
     DataMessage data_message;
-
-    process_incomming_messages();
     
     device_senddata(1, reinterpret_cast<char*>(&begin_message), sizeof(BeginMessage));
 
