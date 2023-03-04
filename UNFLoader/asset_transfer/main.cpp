@@ -8,21 +8,16 @@
 #include <string>
 
 #include "n64_device.hpp"
-#include "null_device.hpp"
 #include "settings.hpp"
 #include "processor.hpp"
 #include "web_service.hpp"
 
 int main(int argc, char** argv) {
-    if (argc < 2) {
-        std::cout << "Usage: ./fw64_asset_transfer path/to/settings.json" << std::endl;
-        return 1;
-    }
-
     framework64::asset_transfer::Settings settings;
-    if (!settings.loadSettingsFile(argv[1])) {
+    std::string settings_path = (argc >= 2) ? argv[1] : "settings.json";
+
+    if (!settings.loadSettingsFile(settings_path))
         return 1;
-    }
 
     framework64::asset_transfer::N64Device device;
     device.initialize(settings.rom_file.string());

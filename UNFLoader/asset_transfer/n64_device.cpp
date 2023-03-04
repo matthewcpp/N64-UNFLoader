@@ -47,7 +47,6 @@ bool N64Device::transferStaticMesh(std::string const & path) {
     auto file_name = asset_path.filename().string();
     auto file_size = static_cast<size_t>(std::filesystem::file_size(asset_path));
 
-    std::cout << "BeginMessage: " << sizeof(BeginMessage) << " DataMessage: " << sizeof(DataMessage) << std::endl;
     std::cout << "Writing " << file_name << " (" << file_size << " bytes) to N64" << std::endl;
 
     std::ifstream file(asset_path, std::ios::binary);
