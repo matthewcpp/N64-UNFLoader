@@ -13,7 +13,6 @@
 #include "processor.hpp"
 #include "web_service.hpp"
 
-
 int main(int argc, char** argv) {
     if (argc < 2) {
         std::cout << "Usage: ./fw64_asset_transfer path/to/settings.json" << std::endl;
@@ -25,12 +24,8 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-#if 1
     framework64::asset_transfer::N64Device device;
     device.initialize(settings.rom_file.string());
-#else
-    framework64::asset_transfer::NullDevice device;
-#endif
 
     framework64::asset_transfer::Processor processor(settings, device);
 

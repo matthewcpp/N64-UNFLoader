@@ -2,17 +2,19 @@
 
 #include "processor.hpp"
 
+#include <memory>
 
 namespace framework64::asset_transfer {
 
 class WebService {
 public:
-    WebService(Processor & p) : processor(p) {}
+    WebService(Processor & processor);
+    ~WebService();
 
     void run();
 private:
-
-    Processor & processor;
+    class Handler;
+    std::unique_ptr<Handler> handler;
 };
 
 } 
