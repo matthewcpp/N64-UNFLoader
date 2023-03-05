@@ -365,3 +365,5 @@ FodyWeavers.xsd
 UNFLoader/ed stuff/
 UNFLoader/Dependencies/
 UNFLoader/UNFLoader
+
+build_release
